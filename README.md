@@ -1,6 +1,6 @@
 # google-analytics-twitter-ads-deephaven
 
-This app allows you to collect data from the Google Analytics and Twitter Ads APIs, and store the data in Deephaven
+This app allows you to collect data from the Google Analytics and Twitter Ads APIs, and store the data in Deephaven.
 
 ## Configuration
 
@@ -8,12 +8,12 @@ This app allows you to collect data from the Google Analytics and Twitter Ads AP
 
 Follow the steps on https://developers.google.com/analytics/devguides/reporting/core/v4/quickstart/service-py to get your account setup for usage with the Google Analytics API.
 
-When downloading the key, save the JSON file locally to `./secrets/google-key.json`
+When downloading the key, save the JSON file locally to `./secrets/google-key.json`.
 
-Take note of the View ID in your Google Analytics account as well. You will need that to run this code.
+Take note of the View ID in your Google Analytics account - you will need that to run this code.
 
-You also will want to take note of the URLs in your Google Analytics account. Currently this app runs 1 URL at a time, but
-you can easily re-run the methods with different URLs
+You also will want to take note of the URLs in your Google Analytics account. Currently, this app runs 1 URL at a time, but
+you can easily re-run the methods with different URLs.
 
 ### Twitter Ads
 
@@ -21,19 +21,18 @@ TODO
 
 ## Launch
 
-Run
+Run this script to launch the app:
 
 ```
 sh start.sh
 ```
 
-to launch the app
 
 ### In Deephaven
 
-Once launched, go to the Deephaven UI (defaults to localhost:10000). You can now run code to collect and visualize data from the APIs.
+Once launched, go to the Deephaven UI (this defaults to: localhost:10000). You can now run code to collect and visualize data from the APIs.
 
-This example collects data from Google Analytics for the `/blog/2022/01/24/displaying-a-quadrillion-rows/` showing page views from January 1st, 2022 to March 14th, 2022 with a 1 day increment between data.
+This example collects data from Google Analytics for the `/blog/2022/01/24/displaying-a-quadrillion-rows/`, showing page views from January 1st, 2022 to March 14th, 2022 with a 1 day increment between data.
 
 ```
 from deephaven.DateTimeUtils import convertDateTime, convertPeriod
