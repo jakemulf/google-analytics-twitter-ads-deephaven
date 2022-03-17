@@ -46,3 +46,24 @@ view_id = "181392643"
 date_increment = convertPeriod("1D")
 ga_table = google_analytics_main(start_date, end_date, expression, path, page_size, view_id, date_increment)
 ```
+
+You can also use the `google_analytics_main_wrapper` method if you want to look at multiple paths and expressions.
+For every path, each expression is evaluated using the `google_analytics_main` method above. In order to avoid column name
+conflicts, the `metric_column_names` parameter is used and must map 1 to 1 to the `expressions` parameter. The created
+tables are joined and merged together to create a single view of the data.
+
+```
+from deephaven.DateTimeUtils import convertDateTime, convertPeriod
+
+start_date = convertDateTime("2022-03-11T00:00:00 NY")
+end_date = convertDateTime("2022-03-14T00:00:00 NY")
+page_size = 100000
+view_id = "181392643"
+date_increment = convertPeriod("1D")
+
+expressions = ["ga:users", "ga:pageViews"]
+paths = ["/core/", "/blog/"]
+metric_column_names = ["users", "page_views"]
+
+wrapper_result = google_analytics_main_wrapper(start_date, end_date, expressions, paths, page_size, view_id, date_increment, metric_column_names)
+```

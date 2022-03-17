@@ -206,12 +206,12 @@ def google_analytics_main(start_date, end_date, expression, path, page_size, vie
             response = get_google_analytics_report(analytics, view_id, start_date=current_date_string,
                                 end_date=next_date_string, expression=expression,
                                 path=path, page_size=page_size, page_token=next_page_token)
+            time.sleep(1) #Sleep to avoid rate limits for subsequent calls
             total_counts = merge_counts(total_counts, generate_counts(response))
             next_page_token = response["reports"][0].get("nextPageToken")
             #If no pagination, break
             if next_page_token is None:
                 break
-            time.sleep(1) #Sleep to avoid rate limits for subsequent calls
 
         #Write the results to the Deephaven table
         for url in total_counts.keys():
@@ -237,11 +237,13 @@ def google_analytics_main_wrapper(start_date, end_date, expressions, paths, page
         view_id (str): The Google Analytics view ID to collect data from.
         date_increment (Period): The amount of time between data collection periods.
         metric_column_names (list<str>): A list of column names of the metric column in the resulting Deephaven Table.
+    Raises:
+        ValueError: If len(expressions) and len(metric_column_names) do not match, a ValueError is raised.
     Returns:
         Table: A single Deephaven table containing all of the data joined together
     """
     if len(expressions) != len(metric_column_names):
-        raise TypeError("len(expressions) and len(metric_column_names) must match")
+        raise ValueError("len(expressions) and len(metric_column_names) must match")
 
     table = None
     for path in paths:
