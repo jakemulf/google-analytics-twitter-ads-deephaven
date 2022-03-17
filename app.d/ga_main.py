@@ -5,22 +5,10 @@ Main file to collect data from Google Analytics.
 
 This file does not create any tables or plots in Deephaven. Instead, it defines functions
 to be called in the Deephaven UI.
-
-Example useage of code to run in Deephaven:
-
-from deephaven.DateTimeUtils import convertDateTime, convertPeriod
-
-start_date = convertDateTime("2022-01-01T00:00:00 NY")
-end_date = convertDateTime("2022-03-14T00:00:00 NY")
-expression = "ga:pageViews"
-path = "/blog/2022/01/24/displaying-a-quadrillion-rows/"
-page_size = 100000
-view_id = "181392643"
-date_increment = convertPeriod("1D")
-ga_table = google_analytics_main(start_date, end_date, expression, path, page_size, view_id, date_increment)
 """
 from deephaven import DynamicTableWriter, Types as dht
 from deephaven.DateTimeUtils import plus, minus, convertPeriod
+from deephaven.TableTools import merge
 
 from apiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
@@ -173,7 +161,7 @@ def get_google_analytics_report(analytics, view_id, start_date=None, end_date=No
 
   return analytics.reports().batchGet(body=body).execute()
 
-def google_analytics_main(start_date, end_date, expression, path, page_size, view_id, date_increment):
+def google_analytics_main(start_date, end_date, expression, path, page_size, view_id, date_increment, metric_column_name=None):
     """
     Main method for the google analytics collector. This pulls day-by-day information from
     the google analytics API for the given path, and returns a Deephaven table of this information
@@ -186,12 +174,14 @@ def google_analytics_main(start_date, end_date, expression, path, page_size, vie
         page_size (int): The number of rows to grab in the API request.
         view_id (str): The Google Analytics view ID to collect data from.
         date_increment (Period): The amount of time between data collection periods.
-    
+        metric_column_name (str): The column name of the metric column in the resulting Deephaven Table.
     Returns:
         Table: The Deephaven table containing the day-by-day data
     """
     #Create the table writer
-    column_names = ["Date", "URL", "MetricCount"]
+    if metric_column_name is None:
+        metric_column_name = "MetricCount"
+    column_names = ["Date", "URL", metric_column_name]
     column_types = [dht.datetime, dht.string, dht.int_]
     table_writer = DynamicTableWriter(column_names, column_types)
     
@@ -230,3 +220,42 @@ def google_analytics_main(start_date, end_date, expression, path, page_size, vie
         current_date = plus(current_date, date_increment)
 
     return table_writer.getTable()
+
+def google_analytics_main_wrapper(start_date, end_date, expressions, paths, page_size, view_id, date_increment, metric_column_names):
+    """
+    A wrapper method for google_analytics_main in case someone wants to use multiple expressions, paths, and column names.
+    For every path, every expression is evaluated and stored in a Deephaven table, and then the tables are joined together.
+
+    len(expressions) and len(metric_column_names) must match.
+
+    Parameters:
+        start_date (DateTime): The start date as a Deephaven DateTime object.
+        end_date (DateTime): The end date as a Deephaven DateTime object.
+        expression (list<str>): A list of expressions to return for the paths.
+        paths (list<str>): A list of paths to evaluate the expression on.
+        page_size (int): The number of rows to grab in the API request.
+        view_id (str): The Google Analytics view ID to collect data from.
+        date_increment (Period): The amount of time between data collection periods.
+        metric_column_names (list<str>): A list of column names of the metric column in the resulting Deephaven Table.
+    Returns:
+        Table: A single Deephaven table containing all of the data joined together
+    """
+    if len(expressions) != len(metric_column_names):
+        raise TypeError("len(expressions) and len(metric_column_names) must match")
+
+    table = None
+    for path in paths:
+        path_table = None
+        for i in range(len(expressions)):
+            expression = expressions[i]
+            metric_column_name = metric_column_names[i]
+            result = google_analytics_main(start_date, end_date, expression, path, page_size, view_id, date_increment, metric_column_name)
+            if path_table is None:
+                path_table = result
+            else:
+                path_table = path_table.join(result, "Date, URL")
+        if table is None:
+            table = path_table
+        else:
+            table = merge(table, path_table)
+    return table
