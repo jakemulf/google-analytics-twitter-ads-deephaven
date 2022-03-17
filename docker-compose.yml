@@ -10,6 +10,8 @@ services:
       - api-cache:/cache
     environment:
       - JAVA_TOOL_OPTIONS=-Xmx4g -Ddeephaven.console.type=python -Ddeephaven.application.dir=/app.d
+      - TWITTER_ACCOUNT_ID=${TWITTER_ACCOUNT_ID}
+      - TWITTER_BEARER_TOKEN=${TWITTER_BEARER_TOKEN}
 
   web:
     image: ghcr.io/deephaven/web:${VERSION:-latest}

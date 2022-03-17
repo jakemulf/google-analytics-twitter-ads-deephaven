@@ -10,9 +10,10 @@ from deephaven import DynamicTableWriter, Types as dht
 from deephaven.DateTimeUtils import plus
 
 import json
+import os
 
-ACCOUNT_ID = "1234"
-BEARER_TOKEN = "1234"
+TWITTER_ACCOUNT_ID = os.environ.get("TWITTER_ACCOUNT_ID")
+TWITTER_BEARER_TOKEN = os.environ.get("TWITTER_BEARER_TOKEN")
 
 def get_campaign_metrics(campaign_id, start_date, end_date):
     """
