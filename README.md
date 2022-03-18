@@ -80,11 +80,8 @@ date_increment = convertPeriod("1D")
 twitter_table = twitter_ads_main(start_date, end_date, date_increment)
 ```
 
-Once you have your two tables, you can create plots with them. This example plots Twitter clicks with Google Analytics users for the `/blog/2022/02/23/csv-reader/` URL.
+Once you have your two tables, you can create plots with them. The helper script `plot.py` contains a method `plot_url_and_campaign` that displays metrics from the Google and Twitter tables side by side
 
 ```
-from deephaven import Plot
-
-ga_twitter_plot = Plot.plot("Users", google_table.where("URL = `/blog/2022/02/23/csv-reader/`"), "Date", "Users")\
-    .plot("Clicks", twitter_table.where("Campaign = `batch campaigns`"), "Date", "Clicks").show()
+plot = plot_url_and_campaign("/blog/2022/01/24/displaying-a-quadrillion-rows/", "batch campaigns", ["MetricCount"], ["Clicks", "Impressions"], google_table, twitter_table)
 ```
