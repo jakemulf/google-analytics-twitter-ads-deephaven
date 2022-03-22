@@ -7,7 +7,7 @@ This file does not create any tables or plots in Deephaven. Instead, it defines 
 to be called in the Deephaven UI.
 """
 from deephaven import DynamicTableWriter, Types as dht
-from deephaven.DateTimeUtils import plus
+from deephaven.DateTimeUtils import plus, convertDateTime
 
 from twitter_ads.client import Client
 from twitter_ads.analytics import Analytics
@@ -26,28 +26,50 @@ TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
 twitter_client = Client(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
 twitter_accounts = twitter_client.accounts()
 
-def get_campaign_metrics(account, campaign_id, start_date, end_date):
+def campaign_out_of_range(campaign, start_date, end_date):
+    """
+    Determines if the campaign exists within the given date range.
+
+    Parameters:
+        campaign (Campaign): The Twitter campaign
+        start_date (DateTime): The start date as a Deephaven DateTime object
+        end_date (DateTime): The end date as a Deephaven DateTime object
+    Returns:
+        bool: True if the campaign is out of the given date range, False otherwise
+    """
+    #Campaign times are in the yyyy-mm-ddThh:mm:ssZ format
+    campaign_start_time = convertDateTime(campaign._start_time[0:-1] + " UTC")
+    campaign_end_time = convertDateTime(campaign._end_time[0:-1] + " UTC")
+
+    return (start_date >= campaign_start_time and start_date >= campaign_end_time) or (end_date <= campaign_start_time and end_date <= campaign_end_time)
+
+def get_campaign_metrics(account, campaign, start_date, end_date, placement):
     """
     Gets the campaign metrics for the given campaign for the given date range
 
     Parameters:
         account (Account): The Twitter account object
-        campaing_id (str): The Twitter campaign ID
+        campaign (Campaign): The Twitter campaign object
         start_date (DateTime): The start date as a Deephaven DateTime object
         end_date (DateTime): The end date as a Deephaven DateTime object
+        placement (str): The Twitter placement. Should be one of "ALL_ON_TWITTER" or "PUBLISHER_NETWORK"
     Returns:
         (int, int, int): A tuple representing the clicks, engagements, and impressions on the
             campaign for the given time period.
     """
+    if campaign_out_of_range(campaign, start_date, end_date):
+        return (None, None, None)
+
     metric_groups = [METRIC_GROUP.ENGAGEMENT]
     kwargs = {
         "start_time": datetime.strptime(start_date.toDateString(), "%Y-%m-%d"),
         "end_time": datetime.strptime(end_date.toDateString(), "%Y-%m-%d"),
         "entity": "CAMPAIGN",
         "granularity": "TOTAL",
-        "placement": "ALL_ON_TWITTER"
+        "placement": placement
     }
-    response = Analytics.all_stats(account, [campaign_id], metric_groups, **kwargs)
+    response = Analytics.all_stats(account, [campaign.id], metric_groups, **kwargs)
+    time.sleep(1)
 
     response_data = response[0]["id_data"][0]["metrics"]
     clicks = response_data["clicks"]
@@ -68,14 +90,12 @@ def get_campaigns():
     Retrieves all the campaigns for the Twitter account
 
     Returns:
-        dict: A key-value dictionary mapping campaign IDs to campaign names
+        list<Campaign>: The list of all campaigns across all accounts 
     """
-    campaigns = {}
+    campaigns = []
     for account in twitter_accounts:
         for campaign in account.campaigns():
-            campaign_id = campaign.id
-            campaign_name = campaign.name
-            campaigns[campaign_id] = campaign_name
+            campaigns.append(campaign)
         time.sleep(1)
     return campaigns
 
@@ -92,8 +112,8 @@ def twitter_ads_main(start_date, end_date, date_increment):
         Table: A Deephaven table containing the campaign information
     """
     #Create table writer
-    column_names = ["Date", "CampaignName", "CampaignId", "Clicks", "Engagements", "Impressions"]
-    column_types = [dht.datetime, dht.string, dht.string, dht.int_, dht.int_, dht.int_]
+    column_names = ["Date", "CampaignName", "CampaignId", "Placement", "Clicks", "Engagements", "Impressions"]
+    column_types = [dht.datetime, dht.string, dht.string, dht.string, dht.int_, dht.int_, dht.int_]
     table_writer = DynamicTableWriter(column_names, column_types)
 
     #Get campaigns on the account
@@ -104,12 +124,12 @@ def twitter_ads_main(start_date, end_date, date_increment):
     while current_date < end_date:
         next_date = plus(current_date, date_increment)
         for account in twitter_accounts:
-            for campaign_id in campaigns.keys():
-                (clicks, engagements, impressions) = get_campaign_metrics(account, campaign_id, current_date, next_date)
-                print([clicks, engagements, impressions]) #TODO: remove for debugging
-                if not (None in [clicks, engagements, impressions]):
-                    table_writer.logRowPermissive(current_date, campaigns[campaign_id], campaign_id, clicks, engagements, impressions)
-                time.sleep(1)
+            for campaign in campaigns:
+                for placement in ["PUBLISHER_NETWORK", "ALL_ON_TWITTER"]:
+                    (clicks, engagements, impressions) = get_campaign_metrics(account, campaign, current_date, next_date, placement)
+                    print([clicks, engagements, impressions]) #TODO: remove for debugging
+                    if not (None in [clicks, engagements, impressions]):
+                        table_writer.logRowPermissive(current_date, campaign.name, campaign.id, placement, clicks, engagements, impressions)
         current_date = next_date
 
     return table_writer.getTable()
