@@ -22,7 +22,7 @@ def plot_url_and_campaign(google_analytics_url, twitter_campaign,
         Plot: The Deephaven plot
     """
     ga_where = f"URL = `{google_analytics_url}`"
-    twitter_where = f"Campaign = `{twitter_campaign}`"
+    twitter_where = f"CampaignName = `{twitter_campaign}`"
     plot = None
     for metric in google_analytics_metrics:
         if plot is None:
