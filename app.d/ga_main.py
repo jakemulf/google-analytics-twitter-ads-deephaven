@@ -36,35 +36,36 @@ def merge_counts(d1, d2):
 
     return d1
 
-def path_format(strn, normalize_query_strings=True):
+def path_format(strn, ignore_query_strings):
     """
-    Formats the path. For now, just unifies twitter query parameters.
+    Formats the path. For now, just unifies query parameters.
 
     Parameters:
         strn (str): The path to format.
-        normalize_query_strings (bool): If set to True, sets query strings to a default value.
-            Otherwise, doesn't modify query strings.
+        ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
+            Otherwise, query strings are normalized to a constant value.
     Returns:
         str: The formatted path
     """
     result = None
     if "?" in strn:
-        [base, query] = strn.split("?")
-        if 'twclid' in query:
-            query = "twitter"
-        elif normalize_query_strings:
-            query = "some_query_string"
-        result = base + query
+        [base, _] = strn.split("?")
+        if ignore_query_strings:
+            result = base
+        else:
+            result = base + "query_params"
     else:
         result = strn
     return result
 
-def generate_counts(d):
+def generate_counts(d, ignore_query_strings):
     """
     Custom counts generator for the given data
 
     Parameters:
         d (dict): The dictionary response from the Google Analytics API
+        ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
+            Otherwise, query strings are normalized to a constant value.
     Returns:
         dict: Dictionary containing the sum of the URLs and the values
     """
@@ -73,7 +74,7 @@ def generate_counts(d):
         if "data" in report.keys():
             if "rows" in report["data"].keys():
                 for rows in report["data"]["rows"]:
-                    url = path_format(rows["dimensions"][0])
+                    url = path_format(rows["dimensions"][0], ignore_query_strings)
                     count = int(rows["metrics"][0]["values"][0])
                     if not (url in counts):
                         counts[url] = 0
@@ -161,9 +162,10 @@ def get_google_analytics_report(analytics, view_id, start_date=None, end_date=No
 
   return analytics.reports().batchGet(body=body).execute()
 
-def google_analytics_main(start_date, end_date, expression, path, page_size, view_id, date_increment, metric_column_name=None):
+def google_analytics_table_writer(start_date, end_date, expression, path, page_size,
+                                  view_id, date_increment, metric_column_name, ignore_query_strings):
     """
-    Main method for the google analytics collector. This pulls day-by-day information from
+    Table writer for the google analytics collector. This pulls day-by-day information from
     the google analytics API for the given path, and returns a Deephaven table of this information
 
     Parameters:
@@ -175,12 +177,12 @@ def google_analytics_main(start_date, end_date, expression, path, page_size, vie
         view_id (str): The Google Analytics view ID to collect data from.
         date_increment (Period): The amount of time between data collection periods.
         metric_column_name (str): The column name of the metric column in the resulting Deephaven Table.
+        ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
+            Otherwise, query strings are normalized to a constant value.
     Returns:
         Table: The Deephaven table containing the day-by-day data
     """
     #Create the table writer
-    if metric_column_name is None:
-        metric_column_name = "MetricCount"
     column_names = ["Date", "URL", metric_column_name]
     column_types = [dht.datetime, dht.string, dht.int_]
     table_writer = DynamicTableWriter(column_names, column_types)
@@ -207,7 +209,7 @@ def google_analytics_main(start_date, end_date, expression, path, page_size, vie
                                 end_date=next_date_string, expression=expression,
                                 path=path, page_size=page_size, page_token=next_page_token)
             time.sleep(1) #Sleep to avoid rate limits for subsequent calls
-            total_counts = merge_counts(total_counts, generate_counts(response))
+            total_counts = merge_counts(total_counts, generate_counts(response, ignore_query_strings))
             next_page_token = response["reports"][0].get("nextPageToken")
             #If no pagination, break
             if next_page_token is None:
@@ -221,10 +223,10 @@ def google_analytics_main(start_date, end_date, expression, path, page_size, vie
 
     return table_writer.getTable()
 
-def google_analytics_main_wrapper(start_date, end_date, expressions, paths, page_size, view_id, date_increment, metric_column_names):
+def google_analytics_main(start_date, end_date, expressions, paths, page_size, view_id, date_increment, metric_column_names, ignore_query_strings=True):
     """
-    A wrapper method for google_analytics_main in case someone wants to use multiple expressions, paths, and column names.
-    For every path, every expression is evaluated and stored in a Deephaven table, and then the tables are joined together.
+    Main method for the google analytics collector.For every path, every expression is evaluated and stored in a Deephaven table,
+    and then the tables are joined together.
 
     len(expressions) and len(metric_column_names) must match.
 
@@ -237,6 +239,8 @@ def google_analytics_main_wrapper(start_date, end_date, expressions, paths, page
         view_id (str): The Google Analytics view ID to collect data from.
         date_increment (Period): The amount of time between data collection periods.
         metric_column_names (list<str>): A list of column names of the metric column in the resulting Deephaven Table.
+        ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
+            Otherwise, query strings are normalized to a constant value.
     Raises:
         ValueError: If len(expressions) and len(metric_column_names) do not match, a ValueError is raised.
     Returns:
@@ -251,7 +255,7 @@ def google_analytics_main_wrapper(start_date, end_date, expressions, paths, page
         for i in range(len(expressions)):
             expression = expressions[i]
             metric_column_name = metric_column_names[i]
-            result = google_analytics_main(start_date, end_date, expression, path, page_size, view_id, date_increment, metric_column_name)
+            result = google_analytics_table_writer(start_date, end_date, expression, path, page_size, view_id, date_increment, metric_column_name, ignore_query_strings)
             if path_table is None:
                 path_table = result
             else:
