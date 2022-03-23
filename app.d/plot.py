@@ -14,7 +14,7 @@ def plot_url_and_campaign(google_analytics_url, twitter_campaign,
 
     Parameters:
         url (str): The URL in the google analytics table to plot.
-        twitter_campaign (str): The name of the twitter campaign to plot.
+        twitter_campaign (str): The ID of the twitter campaign to plot.
         google_analytics_metrics (list<str>): The columns to plot from the google analytics table.
         twitter_campaign_metrics (list<str>): The columns to plot from the twitter campaign table.
         google_analytics_table (Table): The Deephaven table containing the google analytics data.
@@ -25,7 +25,7 @@ def plot_url_and_campaign(google_analytics_url, twitter_campaign,
         Plot: The Deephaven plot
     """
     ga_where = f"URL = `{google_analytics_url}`"
-    twitter_where_campaign = f"CampaignName = `{twitter_campaign}`"
+    twitter_where_campaign = f"CampaignId = `{twitter_campaign}`"
     twitter_where_placement = f"Placement = `{twitter_placement}`"
     for metric in google_analytics_metrics:
         if plot is None:

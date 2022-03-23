@@ -127,7 +127,6 @@ def twitter_ads_main(start_date, end_date, date_increment):
             for campaign in campaigns:
                 for placement in ["PUBLISHER_NETWORK", "ALL_ON_TWITTER"]:
                     (clicks, engagements, impressions) = get_campaign_metrics(account, campaign, current_date, next_date, placement)
-                    print([clicks, engagements, impressions]) #TODO: remove for debugging
                     if not (None in [clicks, engagements, impressions]):
                         table_writer.logRowPermissive(current_date, campaign.name, campaign.id, placement, clicks, engagements, impressions)
         current_date = next_date
