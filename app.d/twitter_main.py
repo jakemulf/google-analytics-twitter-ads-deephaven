@@ -69,7 +69,7 @@ def get_campaign_metrics(account, campaign, start_date, end_date, placement):
         "placement": placement
     }
     response = Analytics.all_stats(account, [campaign.id], metric_groups, **kwargs)
-    time.sleep(1)
+    time.sleep(4)
 
     response_data = response[0]["id_data"][0]["metrics"]
     clicks = response_data["clicks"]
@@ -96,7 +96,7 @@ def get_campaigns():
     for account in twitter_accounts:
         for campaign in account.campaigns():
             campaigns.append(campaign)
-        time.sleep(1)
+        time.sleep(4)
     return campaigns
 
 def twitter_ads_main(start_date, end_date, date_increment):
@@ -122,6 +122,8 @@ def twitter_ads_main(start_date, end_date, date_increment):
     #Loop through dates
     current_date = start_date
     while current_date < end_date:
+        print("Twitter")
+        print(current_date)
         next_date = plus(current_date, date_increment)
         for account in twitter_accounts:
             for campaign in campaigns:
