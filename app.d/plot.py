@@ -7,7 +7,7 @@ from deephaven import Plot
 
 def plot_url_and_campaign(google_analytics_url, twitter_campaign,
                             google_analytics_metrics, twitter_campaign_metrics,
-                            google_analytics_table, twitter_campaign_table, twitter_placement,
+                            google_analytics_table, twitter_campaign_table, twitter_placement=None,
                             plot=None):
     """
     Plots the google analytics url information against the twitter campaign information.
@@ -26,7 +26,9 @@ def plot_url_and_campaign(google_analytics_url, twitter_campaign,
     """
     ga_where = f"URL = `{google_analytics_url}`"
     twitter_where_campaign = f"CampaignId = `{twitter_campaign}`"
-    twitter_where_placement = f"Placement = `{twitter_placement}`"
+    twitter_where_placement = "1 = 1" #This is a janky workaround to have a default "true"
+    if not (twitter_placement is None):
+        twitter_where_placement = f"Placement = `{twitter_placement}`"
     for metric in google_analytics_metrics:
         if plot is None:
             plot = Plot.plot(f"GoogleMetrics{metric}", google_analytics_table.where(ga_where), "Date", metric)

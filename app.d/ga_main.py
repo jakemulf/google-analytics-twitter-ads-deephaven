@@ -193,6 +193,8 @@ def google_analytics_table_writer(start_date, end_date, expression, path, page_s
     #Loop through the date range
     current_date = start_date
     while current_date < end_date:
+        print("Google")
+        print(current_date)
         next_date = plus(current_date, date_increment)
         next_date = minus(next_date, ONE_DAY) #The analytics API is inclusive, so we need to subtract an extra day
         #Convert deephaven datetimes to yyyy-mm-dd format
