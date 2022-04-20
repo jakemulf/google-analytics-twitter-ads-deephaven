@@ -5,4 +5,3 @@ id=google.twitter
 name=Google Twitter data sync
 file_0=ga_main.py
 file_1=twitter_main.py
-file_2=plot.py

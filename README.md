@@ -47,15 +47,15 @@ Once launched, go to the Deephaven UI (this defaults to: localhost:10000). You c
 This example collects data from Google Analytics for the `/blog/2022/01/24/displaying-a-quadrillion-rows/`, showing page views from January 1st, 2022 to March 14th, 2022 with a 1 day increment between data.
 
 ```
-from deephaven.DateTimeUtils import convertDateTime, convertPeriod
+from deephaven.time import to_datetime, to_period
 
-start_date = convertDateTime("2022-01-01T00:00:00 NY")
-end_date = convertDateTime("2022-03-14T00:00:00 NY")
+start_date = to_datetime("2022-01-01T00:00:00 NY")
+end_date = to_datetime("2022-03-14T00:00:00 NY")
 expressions = ["ga:pageViews"]
 paths = ["/blog/2022/01/24/displaying-a-quadrillion-rows/"]
 page_size = 100000
 view_id = "181392643"
-date_increment = convertPeriod("1D")
+date_increment = to_period("1D")
 metric_column_names = ["PageViews"]
 google_table = google_analytics_main(start_date, end_date, expressions, paths, page_size, view_id, date_increment, metric_column_names)
 ```
@@ -63,18 +63,11 @@ google_table = google_analytics_main(start_date, end_date, expressions, paths, p
 This example collects campaign data from the Twitter Ads API.
 
 ```
-from deephaven.DateTimeUtils import convertDateTime, convertPeriod
+from deephaven.time import to_datetime, to_period
 
-start_date = convertDateTime("2022-03-11T00:00:00 NY")
-end_date = convertDateTime("2022-03-14T00:00:00 NY")
-date_increment = convertPeriod("1D")
+start_date = to_datetime("2022-03-11T00:00:00 NY")
+end_date = to_datetime("2022-03-14T00:00:00 NY")
+date_increment = to_period("1D")
 
 twitter_table = twitter_ads_main(start_date, end_date, date_increment)
-```
-
-Once you have your two tables, you can create plots with them. The helper script `plot.py` contains a method `plot_url_and_campaign` that displays metrics from the Google and Twitter tables side by side
-
-```
-plot = plot_url_and_campaign("/blog/2022/01/24/displaying-a-quadrillion-rows/", "123abc", ["MetricCount"],
-                             ["Clicks", "Impressions"], google_table, twitter_table, "PUBLISHER_NETWORK")
 ```

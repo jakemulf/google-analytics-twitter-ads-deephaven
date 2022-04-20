@@ -6,9 +6,9 @@ Main file to collect data from Google Analytics.
 This file does not create any tables or plots in Deephaven. Instead, it defines functions
 to be called in the Deephaven UI.
 """
-from deephaven import DynamicTableWriter, Types as dht
-from deephaven.DateTimeUtils import plus, minus, convertPeriod
-from deephaven.TableTools import merge
+from deephaven import DynamicTableWriter, merge
+import deephaven.dtypes as dht
+from deephaven.time import plus_period, minus_period, to_period
 
 from apiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
@@ -17,7 +17,7 @@ import time
 
 SCOPES = ['https://www.googleapis.com/auth/analytics.readonly']
 KEY_FILE_LOCATION = '/google-key.json'
-ONE_DAY = convertPeriod("1D")
+ONE_DAY = to_period("1D")
 
 def merge_counts(d1, d2):
     """
@@ -183,9 +183,12 @@ def google_analytics_table_writer(start_date, end_date, expression, path, page_s
         Table: The Deephaven table containing the day-by-day data
     """
     #Create the table writer
-    column_names = ["Date", "URL", metric_column_name]
-    column_types = [dht.datetime, dht.string, dht.int_]
-    table_writer = DynamicTableWriter(column_names, column_types)
+    dtw_columns = {
+        "Date": dht.DateTime,
+        "URL": dht.string,
+        metric_column_name: dht.double
+    }
+    table_writer = DynamicTableWriter(dtw_columns)
     
     #Create analytics class
     analytics = initialize_analyticsreporting()
@@ -195,8 +198,8 @@ def google_analytics_table_writer(start_date, end_date, expression, path, page_s
     while current_date < end_date:
         print("Google")
         print(current_date)
-        next_date = plus(current_date, date_increment)
-        next_date = minus(next_date, ONE_DAY) #The analytics API is inclusive, so we need to subtract an extra day
+        next_date = plus_period(current_date, date_increment)
+        next_date = minus_period(next_date, ONE_DAY) #The analytics API is inclusive, so we need to subtract an extra day
         #Convert deephaven datetimes to yyyy-mm-dd format
         current_date_string = current_date.toDateString()
         next_date_string = next_date.toDateString()
@@ -219,11 +222,11 @@ def google_analytics_table_writer(start_date, end_date, expression, path, page_s
 
         #Write the results to the Deephaven table
         for url in total_counts.keys():
-            table_writer.logRowPermissive(current_date, url, total_counts[url])
+            table_writer.write_row(current_date, url, total_counts[url])
 
-        current_date = plus(current_date, date_increment)
+        current_date = plus_period(current_date, date_increment)
 
-    return table_writer.getTable()
+    return table_writer.table
 
 def google_analytics_main(start_date, end_date, expressions, paths, page_size, view_id, date_increment, metric_column_names, ignore_query_strings=True):
     """
