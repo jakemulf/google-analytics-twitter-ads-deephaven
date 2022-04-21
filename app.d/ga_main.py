@@ -135,21 +135,19 @@ class GaCollector:
             #If pagination is needed, create variable to store pagination results
             next_page_token = None
 
-            #Dictionary to contain the results
-            total_counts = {}
             while True:
                 response = self._get_google_analytics_report(path, metrics_collector, current_date_string,
                                                              next_date_string, page_token=next_page_token)
                 time.sleep(1) #Sleep to avoid rate limits for subsequent calls
-                total_counts = merge_counts(total_counts, generate_counts(response, metrics_collector.converter, self.ignore_query_strings))
+                parsed_counts = parse_ga_response(response, metrics_collector.converter, self.ignore_query_strings)
                 next_page_token = response["reports"][0].get("nextPageToken")
+
+                for (url, value) in parsed_counts:
+                    table_writer.write_row(current_date, url, value)
+
                 #If no pagination, break
                 if next_page_token is None:
                     break
-
-            #Write the results to the Deephaven table
-            for url in total_counts.keys():
-                table_writer.write_row(current_date, url, total_counts[url])
 
             current_date = plus_period(current_date, self.date_increment)
 
@@ -161,22 +159,14 @@ class GaCollector:
         and then the tables are joined together.
 
         Returns:
-            Table: A single Deephaven table containing all of the data joined together
+            list<Table>: A list of Deephaven tables containing all of the metrics
         """
-        table = None
+        tables = []
         for path in self.paths:
-            path_table = None
             for metrics_collector in self.metrics_collectors:
                 result = self._google_analytics_table_writer(path, metrics_collector)
-                if path_table is None:
-                    path_table = result
-                else:
-                    path_table = path_table.join(result, "Date, URL")
-            if table is None:
-                table = path_table
-            else:
-                table = merge([table, path_table])
-        return table
+                tables.append(self._google_analytics_table_writer(path, metrics_collector))
+        return tables
 
 class MetricsCollector:
     """
@@ -194,23 +184,6 @@ class MetricsCollector:
         self.dh_type = dh_type
         self.converter = converter
 
-def merge_counts(d1, d2):
-    """
-    Merges the 2 given dictionaries into 1 by summing their key-value pairs
-
-    Parameters:
-        d1 (dict): The first dictionary to merge
-        d2 (dict): The second dictionary to merge
-    Returns:
-        dict: The merged and summed dictionaries
-    """
-    for key in d2.keys():
-        if not key in d1.keys():
-            d1[key] = 0
-        d1[key] += d2[key]
-
-    return d1
-
 def path_format(strn, ignore_query_strings):
     """
     Formats the path. For now, just unifies query parameters.
@@ -218,24 +191,24 @@ def path_format(strn, ignore_query_strings):
     Parameters:
         strn (str): The path to format.
         ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
-            Otherwise, query strings are normalized to a constant value.
+            Otherwise, query strings are left as is.
     Returns:
         str: The formatted path
     """
     result = None
     if "?" in strn:
-        [base, _] = strn.split("?")
+        [base, query] = strn.split("?")
         if ignore_query_strings:
             result = base
         else:
-            result = base + "query_params"
+            result = base + query
     else:
         result = strn
     return result
 
-def generate_counts(d, converter, ignore_query_strings):
+def parse_ga_response(d, converter, ignore_query_strings):
     """
-    Custom counts generator for the given data
+    Custom parser for the GA API response
 
     Parameters:
         d (dict): The dictionary response from the Google Analytics API
@@ -243,19 +216,17 @@ def generate_counts(d, converter, ignore_query_strings):
         ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
             Otherwise, query strings are normalized to a constant value.
     Returns:
-        dict: Dictionary containing the sum of the URLs and the values
+        list(tuple(str, T)): A list of url:value pairings
     """
-    counts = {}
+    values = []
     for report in d["reports"]:
         if "data" in report.keys():
             if "rows" in report["data"].keys():
                 for rows in report["data"]["rows"]:
                     url = path_format(rows["dimensions"][0], ignore_query_strings)
-                    count = converter(rows["metrics"][0]["values"][0])
-                    if not (url in counts):
-                        counts[url] = 0
-                    counts[url] += count
-    return counts
+                    value = converter(rows["metrics"][0]["values"][0])
+                    values.append((url, value))
+    return values
 
 def initialize_analyticsreporting():
     """Initializes an Analytics Reporting API V4 service object.

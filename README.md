@@ -64,7 +64,12 @@ date_increment = to_period("1D")
 
 ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=page_size, view_id=view_id, date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
 
-table = ga_collector.collect_data()
+tables = ga_collector.collect_data()
+
+#To display in the UI
+table_0 = tables[0]
+table_1 = tables[1]
+#...
 ```
 
 This example collects campaign data from the Twitter Ads API.
