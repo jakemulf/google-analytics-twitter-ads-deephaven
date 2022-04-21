@@ -44,20 +44,32 @@ sh start.sh
 
 Once launched, go to the Deephaven UI (this defaults to: localhost:10000). You can now run code to collect and visualize data from the APIs.
 
-This example collects data from Google Analytics for the `/blog/2022/01/24/displaying-a-quadrillion-rows/`, showing page views from January 1st, 2022 to March 14th, 2022 with a 1 day increment between data.
+This example shows how to use the Google Analytics data collector
 
 ```
-from deephaven.time import to_datetime, to_period
-
-start_date = to_datetime("2022-01-01T00:00:00 NY")
-end_date = to_datetime("2022-03-14T00:00:00 NY")
-expressions = ["ga:pageViews"]
-paths = ["/blog/2022/01/24/displaying-a-quadrillion-rows/"]
+metrics_collectors = [
+    MetricsCollector(expression="ga:pageViews", metric_column_name="PageViews", dh_type=dht.int_, converter=int),
+    MetricsCollector(expression="ga:uniquePageViews", metric_column_name="UniqueViews", dh_type=dht.double, converter=float),
+    MetricsCollector(expression="ga:bounceRate", metric_column_name="BounceRate", dh_type=dht.double, converter=float)
+]
+paths = [
+    "/company/careers/posts/internship-2022/",
+    "/core/docs/how-to-guides/parquet-partitioned/"
+]
+start_date = to_datetime("2022-04-12T00:00:00 NY")
+end_date = to_datetime("2022-04-18T00:00:00 NY")
 page_size = 100000
 view_id = "181392643"
 date_increment = to_period("1D")
-metric_column_names = ["PageViews"]
-google_table = google_analytics_main(start_date, end_date, expressions, paths, page_size, view_id, date_increment, metric_column_names)
+
+ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=page_size, view_id=view_id, date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
+
+tables = ga_collector.collect_data()
+
+#To display in the UI
+table_0 = tables[0]
+table_1 = tables[1]
+#...
 ```
 
 This example collects campaign data from the Twitter Ads API.

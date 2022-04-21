@@ -19,22 +19,170 @@ SCOPES = ['https://www.googleapis.com/auth/analytics.readonly']
 KEY_FILE_LOCATION = '/google-key.json'
 ONE_DAY = to_period("1D")
 
-def merge_counts(d1, d2):
-    """
-    Merges the 2 given dictionaries into 1 by summing their key-value pairs
 
-    Parameters:
-        d1 (dict): The first dictionary to merge
-        d2 (dict): The second dictionary to merge
-    Returns:
-        dict: The merged and summed dictionaries
+class GaCollector:
     """
-    for key in d2.keys():
-        if not key in d1.keys():
-            d1[key] = 0
-        d1[key] += d2[key]
+    A class to represent the overall collection of metrics from Google Analyitcs
 
-    return d1
+    Attributes:
+        start_date (DateTime): The start date as a Deephaven DateTime object
+        end_date (DateTime): The end date as a Deephaven DateTime object
+        date_increment (Period): The increment of each date
+        page_size (int): The number of entries to collect from each API request to Google Analytics
+        view_id (str): The view ID for the Google Analytics account
+        paths (list<str>): A list of paths to evaluate in Google Analytics
+        metrics_collectors (list<MetricsCollector>): A list of MetricsCollector instances used for expression evaluation
+        analytics: An authorized Analytics Reporting API V4 service object.
+        ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
+            Otherwise, query strings are normalized to a constant value.
+    """
+    def __init__(self, start_date=None, end_date=None, date_increment=None, page_size=None, view_id=None, paths=None, metrics_collectors=None, ignore_query_strings=True):
+        self.start_date = start_date
+        self.end_date = end_date
+        self.date_increment = date_increment
+        self.page_size = page_size
+        self.view_id = view_id
+        self.paths = paths
+        self.metrics_collectors = metrics_collectors
+        self.ignore_query_strings = ignore_query_strings
+
+        #Create analytics class
+        self.analytics = initialize_analyticsreporting()
+    
+    def _get_google_analytics_report(self, path, metrics_collector, start_date, end_date, page_token=None):
+      """Queries the Analytics Reporting API V4.
+
+      Modified function taken from https://developers.google.com/analytics/devguides/reporting/core/v4/quickstart/service-py
+
+      Parameters:
+        path (str): The path to evaluate the expression on.
+        metrics_collector (MetricsCollector): The MetricsCollector instance that defines how to collect the data.
+        ga_collector (GaCollector): The GaCollector instance that defines what to pull
+        page_token (str): The page token if making a subsequent request.
+      Returns:
+        dict: The Analytics Reporting API V4 response.
+      """
+      body = {
+        'reportRequests': [
+          {
+            'viewId': self.view_id,
+            'pageSize': self.page_size,
+            'dimensions': [
+              {
+                'name': 'ga:pagePath',
+              }
+            ],
+            'dateRanges': [
+              {
+                'startDate': start_date,
+                'endDate': end_date
+              }
+            ],
+            'metrics': [
+              {
+                'expression': metrics_collector.expression
+              }
+            ],
+            'dimensionFilterClauses': [
+              {
+                'filters': [
+                  {
+                    'dimensionName': 'ga:pagePath',
+                    'expressions': [path]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+
+      if page_token is not None:
+        body['reportRequests'][0]['pageToken'] = page_token
+
+      return self.analytics.reports().batchGet(body=body).execute()
+
+    def _google_analytics_table_writer(self, path, metrics_collector):
+        """
+        Table writer for the google analytics collector. This pulls day-by-day information from
+        the google analytics API for the given path, and returns a Deephaven table of this information
+
+        Parameters:
+            path (str): The path to collect data on
+            metrics_collector (MetricsCollector): The metrics to collect
+        Returns:
+            Table: The Deephaven table containing the day-by-day data
+        """
+        #Create the table writer
+        dtw_columns = {
+            "Date": dht.DateTime,
+            "URL": dht.string,
+            metrics_collector.metric_column_name: metrics_collector.dh_type
+        }
+        table_writer = DynamicTableWriter(dtw_columns)
+
+        #Loop through the date range
+        current_date = self.start_date
+        while current_date < self.end_date:
+            print("Google")
+            print(current_date)
+            next_date = plus_period(current_date, self.date_increment)
+            next_date = minus_period(next_date, ONE_DAY) #The analytics API is inclusive, so we need to subtract an extra day
+            #Convert deephaven datetimes to yyyy-mm-dd format
+            current_date_string = current_date.toDateString()
+            next_date_string = next_date.toDateString()
+
+            #If pagination is needed, create variable to store pagination results
+            next_page_token = None
+
+            while True:
+                response = self._get_google_analytics_report(path, metrics_collector, current_date_string,
+                                                             next_date_string, page_token=next_page_token)
+                time.sleep(1) #Sleep to avoid rate limits for subsequent calls
+                parsed_counts = parse_ga_response(response, metrics_collector.converter, self.ignore_query_strings)
+                next_page_token = response["reports"][0].get("nextPageToken")
+
+                for (url, value) in parsed_counts:
+                    table_writer.write_row(current_date, url, value)
+
+                #If no pagination, break
+                if next_page_token is None:
+                    break
+
+            current_date = plus_period(current_date, self.date_increment)
+
+        return table_writer.table
+
+    def collect_data(self):
+        """
+        Main method for the google analytics collector. For every path, every expression is evaluated and stored in a Deephaven table,
+        and then the tables are joined together.
+
+        Returns:
+            list<Table>: A list of Deephaven tables containing all of the metrics
+        """
+        tables = []
+        for path in self.paths:
+            for metrics_collector in self.metrics_collectors:
+                result = self._google_analytics_table_writer(path, metrics_collector)
+                tables.append(self._google_analytics_table_writer(path, metrics_collector))
+        return tables
+
+class MetricsCollector:
+    """
+    A class to represent a definition of collecting specific metrics from Google Analytics
+
+    Attributes:
+        expression (str): The Google Analytics expression to collect
+        metric_column_name (str): The column name in the Deephaven table for the collected metric
+        dh_type (dht.type): The Deephaven type of the column
+        converter (method): A method to convert a String to the Deephaven type
+    """
+    def __init__(self, expression=None, metric_column_name=None, dh_type=None, converter=None):
+        self.expression = expression
+        self.metric_column_name = metric_column_name
+        self.dh_type = dh_type
+        self.converter = converter
 
 def path_format(strn, ignore_query_strings):
     """
@@ -43,43 +191,42 @@ def path_format(strn, ignore_query_strings):
     Parameters:
         strn (str): The path to format.
         ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
-            Otherwise, query strings are normalized to a constant value.
+            Otherwise, query strings are left as is.
     Returns:
         str: The formatted path
     """
     result = None
     if "?" in strn:
-        [base, _] = strn.split("?")
+        [base, query] = strn.split("?")
         if ignore_query_strings:
             result = base
         else:
-            result = base + "query_params"
+            result = base + query
     else:
         result = strn
     return result
 
-def generate_counts(d, ignore_query_strings):
+def parse_ga_response(d, converter, ignore_query_strings):
     """
-    Custom counts generator for the given data
+    Custom parser for the GA API response
 
     Parameters:
         d (dict): The dictionary response from the Google Analytics API
+        converter (method): A method to convert the data from the GA API to a Python value
         ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
             Otherwise, query strings are normalized to a constant value.
     Returns:
-        dict: Dictionary containing the sum of the URLs and the values
+        list(tuple(str, T)): A list of url:value pairings
     """
-    counts = {}
+    values = []
     for report in d["reports"]:
         if "data" in report.keys():
             if "rows" in report["data"].keys():
                 for rows in report["data"]["rows"]:
                     url = path_format(rows["dimensions"][0], ignore_query_strings)
-                    count = int(rows["metrics"][0]["values"][0])
-                    if not (url in counts):
-                        counts[url] = 0
-                    counts[url] += count
-    return counts
+                    value = converter(rows["metrics"][0]["values"][0])
+                    values.append((url, value))
+    return values
 
 def initialize_analyticsreporting():
     """Initializes an Analytics Reporting API V4 service object.
@@ -94,179 +241,3 @@ def initialize_analyticsreporting():
     analytics = build('analyticsreporting', 'v4', credentials=credentials)
 
     return analytics
-
-def get_google_analytics_report(analytics, view_id, start_date=None, end_date=None, expression=None, path=None, page_token=None, page_size=None):
-  """Queries the Analytics Reporting API V4.
-
-  Modified function taken from https://developers.google.com/analytics/devguides/reporting/core/v4/quickstart/service-py
-
-  Parameters:
-    analytics: An authorized Analytics Reporting API V4 service object.
-    view_id (str): The Google Analytics view ID to collect data from.
-    start_date (str): The start date in YYYY-MM-DD format or some other API friendly format.
-    end_date (str): The end date in YYYY-MM-DD format or some other API friendly format.
-    expression (str): The expression to return for the paths.
-    path (str): The path to evaluate the expression on.
-    page_token (str): The page token if making a subsequent request.
-    page_size (int): The number of rows to grab in the API request.
-  Returns:
-    dict: The Analytics Reporting API V4 response.
-  """
-  if start_date is None:
-      start_date = '7daysAgo'
-  if end_date is None:
-      end_date = 'today'
-  if expression is None:
-      expression = 'ga:users'
-  if path is None:
-      path = '/'
-  if page_size is None:
-      page_size = 100000
-  body = {
-    'reportRequests': [
-      {
-        'viewId': view_id,
-        'pageSize': page_size,
-        'dimensions': [
-          {
-            'name': 'ga:pagePath',
-          }
-        ],
-        'dateRanges': [
-          {
-            'startDate': start_date,
-            'endDate': end_date
-          }
-        ],
-        'metrics': [
-          {
-            'expression': expression
-          }
-        ],
-        'dimensionFilterClauses': [
-          {
-            'filters': [
-              {
-                'dimensionName': 'ga:pagePath',
-                'expressions': [path]
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  }
-
-  if page_token is not None:
-    body['reportRequests'][0]['pageToken'] = page_token
-
-  return analytics.reports().batchGet(body=body).execute()
-
-def google_analytics_table_writer(start_date, end_date, expression, path, page_size,
-                                  view_id, date_increment, metric_column_name, ignore_query_strings):
-    """
-    Table writer for the google analytics collector. This pulls day-by-day information from
-    the google analytics API for the given path, and returns a Deephaven table of this information
-
-    Parameters:
-        start_date (DateTime): The start date as a Deephaven DateTime object.
-        end_date (DateTime): The end date as a Deephaven DateTime object.
-        expression (str): The expression to return for the paths.
-        path (str): The path to evaluate the expression on.
-        page_size (int): The number of rows to grab in the API request.
-        view_id (str): The Google Analytics view ID to collect data from.
-        date_increment (Period): The amount of time between data collection periods.
-        metric_column_name (str): The column name of the metric column in the resulting Deephaven Table.
-        ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
-            Otherwise, query strings are normalized to a constant value.
-    Returns:
-        Table: The Deephaven table containing the day-by-day data
-    """
-    #Create the table writer
-    dtw_columns = {
-        "Date": dht.DateTime,
-        "URL": dht.string,
-        metric_column_name: dht.double
-    }
-    table_writer = DynamicTableWriter(dtw_columns)
-    
-    #Create analytics class
-    analytics = initialize_analyticsreporting()
-
-    #Loop through the date range
-    current_date = start_date
-    while current_date < end_date:
-        print("Google")
-        print(current_date)
-        next_date = plus_period(current_date, date_increment)
-        next_date = minus_period(next_date, ONE_DAY) #The analytics API is inclusive, so we need to subtract an extra day
-        #Convert deephaven datetimes to yyyy-mm-dd format
-        current_date_string = current_date.toDateString()
-        next_date_string = next_date.toDateString()
-
-        #If pagination is needed, create variable to store pagination results
-        next_page_token = None
-
-        #Dictionary to contain the results
-        total_counts = {}
-        while True:
-            response = get_google_analytics_report(analytics, view_id, start_date=current_date_string,
-                                end_date=next_date_string, expression=expression,
-                                path=path, page_size=page_size, page_token=next_page_token)
-            time.sleep(1) #Sleep to avoid rate limits for subsequent calls
-            total_counts = merge_counts(total_counts, generate_counts(response, ignore_query_strings))
-            next_page_token = response["reports"][0].get("nextPageToken")
-            #If no pagination, break
-            if next_page_token is None:
-                break
-
-        #Write the results to the Deephaven table
-        for url in total_counts.keys():
-            table_writer.write_row(current_date, url, total_counts[url])
-
-        current_date = plus_period(current_date, date_increment)
-
-    return table_writer.table
-
-def google_analytics_main(start_date, end_date, expressions, paths, page_size, view_id, date_increment, metric_column_names, ignore_query_strings=True):
-    """
-    Main method for the google analytics collector.For every path, every expression is evaluated and stored in a Deephaven table,
-    and then the tables are joined together.
-
-    len(expressions) and len(metric_column_names) must match.
-
-    Parameters:
-        start_date (DateTime): The start date as a Deephaven DateTime object.
-        end_date (DateTime): The end date as a Deephaven DateTime object.
-        expression (list<str>): A list of expressions to return for the paths.
-        paths (list<str>): A list of paths to evaluate the expression on.
-        page_size (int): The number of rows to grab in the API request.
-        view_id (str): The Google Analytics view ID to collect data from.
-        date_increment (Period): The amount of time between data collection periods.
-        metric_column_names (list<str>): A list of column names of the metric column in the resulting Deephaven Table.
-        ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
-            Otherwise, query strings are normalized to a constant value.
-    Raises:
-        ValueError: If len(expressions) and len(metric_column_names) do not match, a ValueError is raised.
-    Returns:
-        Table: A single Deephaven table containing all of the data joined together
-    """
-    if len(expressions) != len(metric_column_names):
-        raise ValueError("len(expressions) and len(metric_column_names) must match")
-
-    table = None
-    for path in paths:
-        path_table = None
-        for i in range(len(expressions)):
-            expression = expressions[i]
-            metric_column_name = metric_column_names[i]
-            result = google_analytics_table_writer(start_date, end_date, expression, path, page_size, view_id, date_increment, metric_column_name, ignore_query_strings)
-            if path_table is None:
-                path_table = result
-            else:
-                path_table = path_table.join(result, "Date, URL")
-        if table is None:
-            table = path_table
-        else:
-            table = merge(table, path_table)
-    return table
