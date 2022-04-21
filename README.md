@@ -83,3 +83,12 @@ date_increment = to_period("1D")
 
 twitter_table = twitter_ads_main(start_date, end_date, date_increment)
 ```
+
+### Parquet reading and writing
+
+There are two helper methods in `./app.d/parquet_writer.py` that can be used to read and write parquet files, `write_tables` and `read_tables`. These methods work with lists of tables, just like the ones returned by the analytics collectors
+
+```
+tables = read_tables(path="/data/")
+write_tables(tables, path="/data/test-1/")
+```
