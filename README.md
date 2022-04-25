@@ -35,15 +35,15 @@ It may take a few days for you to get approved.
 
 To collect data from Slack's API, you need to set up a Slack application. To start, you can go to https://api.slack.com/apps/ and click the **Create New App** button. Give your app a name and assign it to your workspace.
 
-On the next page, click the `Permissions` section underneath `Add features and functionality`. Scroll down to the `Scopes` section and click `Add an OAuth Scope`. This should open up a dropdown menu.
+On the next page, click the **Permissions** section underneath **Add features and functionality**. Scroll down to the **Scopes** section and click **Add an OAuth Scope**. This should open up a dropdown menu.
 
 Add the following OAuth scopes: `channels:history`, `channels:read`, `groups:history`, `groups:read`, `im:history`, `im:read`, `mpim:history`, `mpim:read`
 
-Now, scroll up to the `OAuth Tokens for Your Workspace` section and click the `Install to Workspace` button. On the next page, press `Allow`.
+Now, scroll up to the **OAuth Tokens for Your Workspace** section and click the **Install to Workspace** button. On the next page, press **Allow**.
 
-If this was done correctly, you should see your app in your Slack workspace's `Apps` section. Invite the app to any channels you want to track metrics in: `/invite @<AppName>`.
+If this was done correctly, you should see your app in your Slack workspace's **Apps** section. Invite the app to any channels you want to track metrics in: `/invite @<AppName>`.
 
-Back in the `OAuth Tokens for Your Workspace` section, there should be a `Bot User OAuth Token` field. This is the value used in the `SLACK_API_TOKEN` environmental variable for this project.
+Back in the **OAuth Tokens for Your Workspace** section, there should be a **Bot User OAuth Token** field. This is the value used in the `SLACK_API_TOKEN` environmental variable for this project.
 
 Lastly, you need your channel IDs. These are simply found in the channel information in your workspace. You can optionally save one of these in the `SLACK_CHANNEL` environmental variable for this project.
 
