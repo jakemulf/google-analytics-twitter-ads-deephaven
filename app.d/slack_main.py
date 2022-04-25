@@ -16,6 +16,7 @@ from slack_sdk import WebClient
 
 import os
 import time
+import json
 
 SLACK_API_TOKEN = os.environ.get("SLACK_API_TOKEN")
 SLACK_CHANNEL = os.environ.get("SLACK_CHANNEL")
@@ -33,18 +34,18 @@ def get_thread_messages(slack_channel, ts):
         slack_channel (str): The string ID of the slack channel
         ts (str): A string representing seconds since the Epoch for the time stamp of the thread
     Returns:
-        set: A set containing pairs of (ts, text) for each message
+        set: A set containing pairs of (ts, text, json) for each message
     """
     s = set()
     next_cursor = None
 
     while True:
         thread_replies = slack_client.conversations_replies(channel=slack_channel, ts=ts, cursor=next_cursor)
-        time.sleep(1)
+        time.sleep(1.2)
 
         for message in thread_replies["messages"]:
             if (message["type"] == "message"):
-                s.add((message["ts"], message["text"]))
+                s.add((message["ts"], message["text"], json.dumps(message)))
 
         if bool(thread_replies["has_more"]):
             next_cursor = thread_replies["response_metadata"]["next_cursor"]
@@ -69,7 +70,8 @@ def get_channel_messages(slack_channel):
     """
     dtw_columns = {
         "TS": dht.string,
-        "Text": dht.string
+        "Text": dht.string,
+        "JsonString": dht.string,
     }
     table_writer = DynamicTableWriter(dtw_columns)
 
@@ -85,11 +87,11 @@ def get_channel_messages(slack_channel):
                 #be the only identifier for a thread being present. And the threading API
                 #expects the ts of the original message too
                 if ("thread_ts" in message):
-                    for (ts, text) in get_thread_messages(slack_channel, message["ts"]):
-                        table_writer.write_row(ts, text)
+                    for (ts, text, json_str) in get_thread_messages(slack_channel, message["ts"]):
+                        table_writer.write_row(ts, text, json_str)
                 #Otherwise just add the message
                 else:
-                    table_writer.write_row(message["ts"], message["text"])
+                    table_writer.write_row(message["ts"], message["text"], json.dumps(message))
 
         if bool(channel_history["has_more"]):
             next_cursor = channel_history["response_metadata"]["next_cursor"]

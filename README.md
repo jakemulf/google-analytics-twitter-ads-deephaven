@@ -31,6 +31,22 @@ Once you have your `APP ID` and your tokens, you can fill out the forum at https
 
 It may take a few days for you to get approved.
 
+### Slack
+
+In order to collect data from Slack's API, you need to setup a Slack application. To start you can go to https://api.slack.com/apps/ and click the `Create New App` button. Give your app a name and assign it to your workspace.
+
+On the next page, click the `Permissions` section underneath `Add features and functionality`. Scroll down to the `Scopes` section and click `Add an OAuth Scope`. This should open up a downdown menu.
+
+Add the following OAuth scopes: `channels:history`, `channels:read`, `groups:history`, `groups:read`, `im:history`, `im:read`, `mpim:history`, `mpim:read`
+
+Now scroll up to the `OAuth Tokens for Your Workspace` section and click the `Install to Workspace` button. On the next page press `Allow`.
+
+If this was done right, you should now see your app in the `Apps` section of your Slack workspace. Invite the app to any channels you want to track metrics in `/invite @<AppName>`.
+
+Back in the `OAuth Tokens for Your Workspace` section, there should be a `Bot User OAuth Token` field. This is the value used in the `SLACK_API_TOKEN` environmental variable for this project.
+
+Lastly you need your channel IDs. These are simply found in the channel information in your workspace. You can optionally save one of these in the `SLACK_CHANNEL` environmental variable for this project.
+
 ## Launch
 
 Run this script to launch the app:
@@ -38,7 +54,6 @@ Run this script to launch the app:
 ```
 sh start.sh
 ```
-
 
 ### In Deephaven
 
@@ -84,9 +99,15 @@ date_increment = to_period("1D")
 twitter_table = twitter_ads_main(start_date, end_date, date_increment)
 ```
 
+This example collects data from Slack.
+
+```
+slack = get_channel_messages(SLACK_CHANNEL)
+```
+
 ### Parquet reading and writing
 
-There are two helper methods in `./app.d/parquet_writer.py` that can be used to read and write parquet files, `write_tables` and `read_tables`. These methods work with lists of tables, just like the ones returned by the analytics collectors
+There are two helper methods in `./app.d/parquet_writer.py` that can be used to read and write parquet files, `write_tables` and `read_tables`. `write_tables` expects to receive a list of tables.
 
 ```
 tables = read_tables(path="/data/")
