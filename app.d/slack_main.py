@@ -59,15 +59,24 @@ def get_thread_messages(slack_channel, ts):
             print(next_cursor)
     return s
 
-def get_channel_messages(slack_channel):
+def get_channel_messages(slack_channel, start_time=None, end_time=None):
     """
     Returns all of the messages in the channel
 
     Parameters:
         slack_channel (str): The string ID of the slack channel
+        start_time (DateTime): If given, only retrieve messages after this time stamp
+        end_time (DateTime): If given, only retrieves messages before this time stamp
     Returns
         Table: A Deephaven table of all the messages
     """
+    start_time_seconds = None
+    if not (start_time is None):
+        start_time_seconds = str(start_time.getMillis()/1000)
+    end_time_seconds = None
+    if not (end_time is None):
+        end_time_seconds = str(end_time.getMillis()/1000)
+
     dtw_columns = {
         "TS": dht.string,
         "Text": dht.string,
@@ -78,8 +87,9 @@ def get_channel_messages(slack_channel):
     next_cursor = None
 
     while True:
-        channel_history = slack_client.conversations_history(channel=slack_channel, cursor=next_cursor)
-        time.sleep(1)
+        channel_history = slack_client.conversations_history(channel=slack_channel, cursor=next_cursor, include_all_metadata=True,
+                                                             oldest=start_time_seconds, latest=end_time_seconds)
+        time.sleep(1.2)
 
         for message in channel_history["messages"]:
             if (message["type"] == "message"):
