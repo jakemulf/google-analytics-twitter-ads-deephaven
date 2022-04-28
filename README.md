@@ -121,6 +121,6 @@ write_tables(tables, path="/data/test-1/")
 
 ### Scheduler
 
-The `./app.d/scheduler.py` file contains a script that can be ran on a scheduled basis. The default configuration pulls from the current time floored to 3am (EST time) to 24 hours before. The `DAYS_OFFSET` environmental variable can be set to an integer to support offsets of multiple days.
+The `./app.d/scheduler.py` file contains a script that can be run on a scheduled basis. The default configuration pulls from the current time floored to 3 am (EST) to 24 hours before. The `DAYS_OFFSET` environmental variable can be set to an integer to support offsets of multiple days.
 
-The scheduler simply pulls from all of the data sources (Google, Twitter, etc) and writes them to parquet files. The files are written to the `/data/<start_date>/` directory.
+The scheduler simply pulls from all of the data sources (Google, Twitter, etc.) and writes them to Parquet files. The files are written to the `/data/<start_date>/` directory.
