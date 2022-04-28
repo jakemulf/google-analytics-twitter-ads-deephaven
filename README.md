@@ -87,7 +87,8 @@ for i in range(len(tables)):
     globals()[f"table{i}"] = tables[i]
 ```
 
-This example collects campaign data from the Twitter Ads API.
+This example collects campaign data from the Twitter Ads API. The JSON body that is written contains hour by hour metrics.
+Based on the Twitter Ads API package, the 24 hour time stamps start at 00:00:00 UTC for the given DateTime.
 
 ```
 from deephaven.time import to_datetime, to_period
