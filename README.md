@@ -112,7 +112,7 @@ slack = get_channel_messages(SLACK_CHANNEL, start_time=start_time, end_time=end_
 
 ### Parquet reading and writing
 
-There are two helper methods in `./app.d/parquet_writer.py` that can be used to read and write parquet files, `write_tables` and `read_tables`. `write_tables` expects to receive a list of tables.
+There are two helper methods in `./app.d/parquet_writer.py` that can be used to read and write Parquet files, `write_tables` and `read_tables`. `write_tables` expects to receive a list of tables.
 
 ```
 tables = read_tables(path="/data/")
