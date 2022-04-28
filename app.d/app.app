@@ -6,3 +6,4 @@ name=Google Twitter data sync
 file_0=ga_main.py
 file_1=twitter_main.py
 file_2=parquet_writer.py
+file_3=slack_main.py

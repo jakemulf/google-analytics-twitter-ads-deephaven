@@ -55,11 +55,11 @@ def get_campaign_metrics(account, campaign, start_date, end_date, placement):
         end_date (DateTime): The end date as a Deephaven DateTime object
         placement (str): The Twitter placement. Should be one of "ALL_ON_TWITTER" or "PUBLISHER_NETWORK"
     Returns:
-        (int, int, int): A tuple representing the clicks, engagements, and impressions on the
-            campaign for the given time period.
+        (int, int, int, str): A tuple representing the clicks, engagements, and impressions on the
+            campaign for the given time period, and the full JSON response as a string.
     """
     if campaign_out_of_range(campaign, start_date, end_date):
-        return (None, None, None)
+        return (None, None, None, None)
 
     metric_groups = [METRIC_GROUP.ENGAGEMENT]
     kwargs = {
@@ -84,7 +84,7 @@ def get_campaign_metrics(account, campaign, start_date, end_date, placement):
     if not (impressions is None):
         impressions = impressions[0]
 
-    return (clicks, engagements, impressions)
+    return (clicks, engagements, impressions, json.dumps(response))
 
 def get_campaigns():
     """
@@ -120,7 +120,8 @@ def twitter_ads_main(start_date, end_date, date_increment):
         "Placement": dht.string,
         "Clicks": dht.int_,
         "Engagements": dht.int_,
-        "Impressions": dht.int_
+        "Impressions": dht.int_,
+        "JsonString": dht.string,
     }
     table_writer = DynamicTableWriter(dtw_columns)
 
@@ -136,9 +137,9 @@ def twitter_ads_main(start_date, end_date, date_increment):
         for account in twitter_accounts:
             for campaign in campaigns:
                 for placement in ["PUBLISHER_NETWORK", "ALL_ON_TWITTER"]:
-                    (clicks, engagements, impressions) = get_campaign_metrics(account, campaign, current_date, next_date, placement)
-                    if not (None in [clicks, engagements, impressions]):
-                        table_writer.write_row(current_date, campaign.name, campaign.id, placement, clicks, engagements, impressions)
+                    (clicks, engagements, impressions, json_str) = get_campaign_metrics(account, campaign, current_date, next_date, placement)
+                    if not (None in [clicks, engagements, impressions, json_str]):
+                        table_writer.write_row(current_date, campaign.name, campaign.id, placement, clicks, engagements, impressions, json_str)
         current_date = next_date
 
     return table_writer.table

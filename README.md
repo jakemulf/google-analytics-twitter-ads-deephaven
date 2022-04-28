@@ -31,6 +31,22 @@ Once you have your `APP ID` and your tokens, you can fill out the forum at https
 
 It may take a few days for you to get approved.
 
+### Slack
+
+To collect data from Slack's API, you need to set up a Slack application. To start, you can go to https://api.slack.com/apps/ and click the **Create New App** button. Give your app a name and assign it to your workspace.
+
+On the next page, click the **Permissions** section underneath **Add features and functionality**. Scroll down to the **Scopes** section and click **Add an OAuth Scope**. This should open up a dropdown menu.
+
+Add the following OAuth scopes: `channels:history`, `channels:read`, `groups:history`, `groups:read`, `im:history`, `im:read`, `mpim:history`, `mpim:read`
+
+Now, scroll up to the **OAuth Tokens for Your Workspace** section and click the **Install to Workspace** button. On the next page, press **Allow**.
+
+If this was done correctly, you should see your app in your Slack workspace's **Apps** section. Invite the app to any channels you want to track metrics in: `/invite @<AppName>`.
+
+Back in the **OAuth Tokens for Your Workspace** section, there should be a **Bot User OAuth Token** field. This is the value used in the `SLACK_API_TOKEN` environmental variable for this project.
+
+Lastly, you need your channel IDs. These are simply found in the channel information in your workspace. You can optionally save one of these in the `SLACK_CHANNEL` environmental variable for this project.
+
 ## Launch
 
 Run this script to launch the app:
@@ -38,7 +54,6 @@ Run this script to launch the app:
 ```
 sh start.sh
 ```
-
 
 ### In Deephaven
 
@@ -62,14 +77,14 @@ page_size = 100000
 view_id = "181392643"
 date_increment = to_period("1D")
 
-ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=page_size, view_id=view_id, date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
+ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=page_size, view_id=view_id,
+                           date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
 
 tables = ga_collector.collect_data()
 
 #To display in the UI
-table_0 = tables[0]
-table_1 = tables[1]
-#...
+for i in range(len(tables)):
+    globals()[f"table{i}"] = tables[i]
 ```
 
 This example collects campaign data from the Twitter Ads API.
@@ -84,11 +99,28 @@ date_increment = to_period("1D")
 twitter_table = twitter_ads_main(start_date, end_date, date_increment)
 ```
 
+This example collects data from Slack.
+
+```
+from deephaven.time import to_datetime
+
+start_time = to_datetime("2022-03-11T00:00:00 NY")
+end_time = to_datetime("2022-03-14T00:00:00 NY")
+
+slack = get_channel_messages(SLACK_CHANNEL, start_time=start_time, end_time=end_time)
+```
+
 ### Parquet reading and writing
 
-There are two helper methods in `./app.d/parquet_writer.py` that can be used to read and write parquet files, `write_tables` and `read_tables`. These methods work with lists of tables, just like the ones returned by the analytics collectors
+There are two helper methods in `./app.d/parquet_writer.py` that can be used to read and write Parquet files, `write_tables` and `read_tables`. `write_tables` expects to receive a list of tables.
 
 ```
 tables = read_tables(path="/data/")
 write_tables(tables, path="/data/test-1/")
 ```
+
+### Scheduler
+
+The `./app.d/scheduler.py` file contains a script that can be run on a scheduled basis. The default configuration pulls from the current time floored to 3 am (EST) to 24 hours before. The `DAYS_OFFSET` environmental variable can be set to an integer to support offsets of multiple days.
+
+The scheduler simply pulls from all of the data sources (Google, Twitter, etc.) and writes them to Parquet files. The files are written to the `/data/<start_date>/` directory.
