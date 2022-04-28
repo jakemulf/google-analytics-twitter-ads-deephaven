@@ -77,14 +77,14 @@ page_size = 100000
 view_id = "181392643"
 date_increment = to_period("1D")
 
-ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=page_size, view_id=view_id, date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
+ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=page_size, view_id=view_id,
+                           date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
 
 tables = ga_collector.collect_data()
 
 #To display in the UI
-table_0 = tables[0]
-table_1 = tables[1]
-#...
+for i in range(len(tables)):
+    globals()[f"table{i}"] = tables[i]
 ```
 
 This example collects campaign data from the Twitter Ads API.
@@ -102,7 +102,12 @@ twitter_table = twitter_ads_main(start_date, end_date, date_increment)
 This example collects data from Slack.
 
 ```
-slack = get_channel_messages(SLACK_CHANNEL)
+from deephaven.time import to_datetime
+
+start_time = to_datetime("2022-03-11T00:00:00 NY")
+end_time = to_datetime("2022-03-14T00:00:00 NY")
+
+slack = get_channel_messages(SLACK_CHANNEL, start_time=start_time, end_time=end_time)
 ```
 
 ### Parquet reading and writing
@@ -113,3 +118,9 @@ There are two helper methods in `./app.d/parquet_writer.py` that can be used to 
 tables = read_tables(path="/data/")
 write_tables(tables, path="/data/test-1/")
 ```
+
+### Scheduler
+
+The `./app.d/scheduler.py` file contains a script that can be run on a scheduled basis. The default configuration pulls from the current time floored to 3 am (EST) to 24 hours before. The `DAYS_OFFSET` environmental variable can be set to an integer to support offsets of multiple days.
+
+The scheduler simply pulls from all of the data sources (Google, Twitter, etc.) and writes them to Parquet files. The files are written to the `/data/<start_date>/` directory.
