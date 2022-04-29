@@ -31,6 +31,17 @@ Once you have your `APP ID` and your tokens, you can fill out the forum at https
 
 It may take a few days for you to get approved.
 
+#### Environmental variables
+
+The following environmental variables need to be set to collect data from Twitter
+
+```
+TWITTER_CONSUMER_KEY
+TWITTER_CONSUMER_SECRET
+TWITTER_ACCESS_TOKEN
+TWITTER_ACCESS_TOKEN_SECRET
+```
+
 ### Slack
 
 To collect data from Slack's API, you need to set up a Slack application. To start, you can go to https://api.slack.com/apps/ and click the **Create New App** button. Give your app a name and assign it to your workspace.
@@ -133,6 +144,7 @@ This project has a simple action for PR checks that launches the project and run
 The following repo environmental variables need to be set for the PR check workflow to run:
 
 ```
+GOOGLE_KEY
 TWITTER_CONSUMER_KEY
 TWITTER_CONSUMER_SECRET
 TWITTER_ACCESS_TOKEN
@@ -140,3 +152,5 @@ TWITTER_ACCESS_TOKEN_SECRET
 SLACK_API_TOKEN
 SLACK_CHANNEL
 ```
+
+`GOOGLE_KEY` should be the file contents of the `./secrets/google-key.json` file, and the rest of them should be the same values used to run the project.

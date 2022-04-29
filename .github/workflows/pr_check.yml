@@ -11,9 +11,20 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
+      - run: |
+          mkdir secrets
+          echo "$GOOGLE_KEY" > secrets/google-key.json
+        env:
+          GOOGLE_KEY: ${{ secrets.GOOGLE_KEY }}
       - run: sh start.sh -d
         env:
           DAYS_OFFSET: 0 #This will do a dummy run that builds the tables without any data
+          SLACK_API_TOKEN: ${{ secrets.SLACK_API_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+          TWITTER_CONSUMER_KEY: ${{ secrets.TWITTER_CONSUMER_KEY }}
+          TWITTER_CONSUMER_SECRET: ${{ secrets.TWITTER_CONSUMER_SECRET }}
       - name: Validate presence of tables
         uses: deephaven/action-assert-dh-tables-present@v1.1.0
         with:
