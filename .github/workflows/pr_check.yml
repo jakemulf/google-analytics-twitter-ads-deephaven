@@ -1,0 +1,22 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+job:
+  pr_check:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: sh start.sh -d
+        env:
+          DAYS_OFFSET: 0 #This will do a dummy run that builds the tables without any data
+      - name: Validate presence of tables
+        uses: deephaven/action-assert-dh-tables-present@v1.1.0
+        with:
+          table-names: ga_table0,slack_table,twitter_table
+          host: localhost
+          max-retries: 8

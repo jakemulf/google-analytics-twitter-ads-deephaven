@@ -66,7 +66,7 @@ def get_campaign_metrics(account, campaign, start_date, end_date, placement):
         "start_time": datetime.strptime(start_date.toDateString(), "%Y-%m-%d"),
         "end_time": datetime.strptime(end_date.toDateString(), "%Y-%m-%d"),
         "entity": "CAMPAIGN",
-        "granularity": "TOTAL",
+        "granularity": "HOUR",
         "placement": placement
     }
     response = Analytics.all_stats(account, [campaign.id], metric_groups, **kwargs)
@@ -78,11 +78,11 @@ def get_campaign_metrics(account, campaign, start_date, end_date, placement):
     impressions = response_data["impressions"]
 
     if not (clicks is None):
-        clicks = clicks[0]
+        clicks = sum(clicks)
     if not (engagements is None):
-        engagements = engagements[0]
+        engagements = sum(engagements)
     if not (impressions is None):
-        impressions = impressions[0]
+        impressions = sum(impressions)
 
     return (clicks, engagements, impressions, json.dumps(response))
 
