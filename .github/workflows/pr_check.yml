@@ -27,6 +27,6 @@ jobs:
       - name: Validate presence of tables
         uses: deephaven/action-assert-dh-tables-present@v1.1.0
         with:
-          table-names: ga_table0,slack_table,twitter_table
+          table-names: ga_table0,twitter_table,slack_channels,slack_messages
           host: localhost
           max-retries: 8
