@@ -73,6 +73,8 @@ Once launched, go to the Deephaven UI (this defaults to: localhost:10000). You c
 This example shows how to use the Google Analytics data collector
 
 ```
+from deephaven.time import to_datetime, to_period
+
 metrics_collectors = [
     MetricsCollector(expression="ga:pageViews", metric_column_name="PageViews", dh_type=dht.int_, converter=int),
     MetricsCollector(expression="ga:uniquePageViews", metric_column_name="UniqueViews", dh_type=dht.double, converter=float),

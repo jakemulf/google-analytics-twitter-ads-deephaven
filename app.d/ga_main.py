@@ -14,6 +14,7 @@ from apiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 
 import time
+import json
 
 SCOPES = ['https://www.googleapis.com/auth/analytics.readonly']
 KEY_FILE_LOCATION = '/google-key.json'
@@ -117,7 +118,8 @@ class GaCollector:
         dtw_columns = {
             "Date": dht.DateTime,
             "URL": dht.string,
-            metrics_collector.metric_column_name: metrics_collector.dh_type
+            metrics_collector.metric_column_name: metrics_collector.dh_type,
+            "JsonString": dht.string,
         }
         table_writer = DynamicTableWriter(dtw_columns)
 
@@ -143,7 +145,7 @@ class GaCollector:
                 next_page_token = response["reports"][0].get("nextPageToken")
 
                 for (url, value) in parsed_counts:
-                    table_writer.write_row(current_date, url, value)
+                    table_writer.write_row(current_date, url, value, json.dumps(response))
 
                 #If no pagination, break
                 if next_page_token is None:
