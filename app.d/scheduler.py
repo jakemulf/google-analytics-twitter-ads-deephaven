@@ -37,8 +37,9 @@ ga_tables = ga_collector.collect_data()
 for i in range(len(ga_tables)):
     globals()[f"ga_table{i}"] = ga_tables[i]
 twitter_table = twitter_ads_main(start_date, end_date, date_increment)
-slack_table = get_channel_messages(SLACK_CHANNEL, start_time=start_date, end_time=end_date)
+(slack_channels, slack_messages) = get_all_slack_messages(start_time=start_date, end_time=end_date)
 
 write_tables(tables=ga_tables, path=f"/data/{start_date.toDateString()}/google/")
 write_tables(table=twitter_table, path=f"/data/{start_date.toDateString()}/twitter/")
-write_tables(table=slack_table, path=f"/data/{start_date.toDateString()}/slack/")
+write_tables(table=slack_channels, path=f"/data/{start_date.toDateString()}/slack-channels/")
+write_tables(table=slack_messages, path=f"/data/{start_date.toDateString()}/slack-messages/")

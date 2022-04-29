@@ -52,11 +52,9 @@ Add the following OAuth scopes: `channels:history`, `channels:read`, `groups:his
 
 Now, scroll up to the **OAuth Tokens for Your Workspace** section and click the **Install to Workspace** button. On the next page, press **Allow**.
 
-If this was done correctly, you should see your app in your Slack workspace's **Apps** section. Invite the app to any channels you want to track metrics in: `/invite @<AppName>`.
+If this was done correctly, you should see your app in your Slack workspace's **Apps** section. Invite the app to all of the public channels in your workspace: `/invite @<AppName>`.
 
 Back in the **OAuth Tokens for Your Workspace** section, there should be a **Bot User OAuth Token** field. This is the value used in the `SLACK_API_TOKEN` environmental variable for this project.
-
-Lastly, you need your channel IDs. These are simply found in the channel information in your workspace. You can optionally save one of these in the `SLACK_CHANNEL` environmental variable for this project.
 
 ## Launch
 
@@ -121,7 +119,7 @@ from deephaven.time import to_datetime
 start_time = to_datetime("2022-03-11T00:00:00 NY")
 end_time = to_datetime("2022-03-14T00:00:00 NY")
 
-slack = get_channel_messages(SLACK_CHANNEL, start_time=start_time, end_time=end_time)
+(slack_channels, slack_messages) = get_all_slack_messages(start_time=start_time, end_time=end_time)
 ```
 
 ### Parquet reading and writing
@@ -152,7 +150,6 @@ TWITTER_CONSUMER_SECRET
 TWITTER_ACCESS_TOKEN
 TWITTER_ACCESS_TOKEN_SECRET
 SLACK_API_TOKEN
-SLACK_CHANNEL
 ```
 
 `GOOGLE_KEY` should be the file contents of the `./secrets/google-key.json` file, and the rest of them should be the same values used to run the project.
