@@ -80,11 +80,11 @@ date_increment = to_period("1D")
 ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=page_size, view_id=view_id,
                            date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
 
-tables = ga_collector.collect_data()
+ga_tables = ga_collector.collect_data()
 
 #To display in the UI
-for i in range(len(tables)):
-    globals()[f"table{i}"] = tables[i]
+for i in range(len(ga_tables)):
+    globals()[f"ga_table{i}"] = ga_tables[i]
 ```
 
 This example collects campaign data from the Twitter Ads API. The JSON body that is written contains hour by hour metrics.
@@ -125,3 +125,18 @@ write_tables(tables, path="/data/test-1/")
 The `./app.d/scheduler.py` file contains a script that can be run on a scheduled basis. The default configuration pulls from the current time floored to 3 am (EST) to 24 hours before. The `DAYS_OFFSET` environmental variable can be set to an integer to support offsets of multiple days.
 
 The scheduler simply pulls from all of the data sources (Google, Twitter, etc.) and writes them to Parquet files. The files are written to the `/data/<start_date>/` directory.
+
+## Github Actions configuration
+
+This project has a simple action for PR checks that launches the project and runs the scheduler with a 0 day offset (meaning no data will be collected).
+
+The following repo environmental variables need to be set for the PR check workflow to run:
+
+```
+TWITTER_CONSUMER_KEY
+TWITTER_CONSUMER_SECRET
+TWITTER_ACCESS_TOKEN
+TWITTER_ACCESS_TOKEN_SECRET
+SLACK_API_TOKEN
+SLACK_CHANNEL
+```

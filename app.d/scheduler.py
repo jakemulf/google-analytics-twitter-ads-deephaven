@@ -1,7 +1,9 @@
 """
 scheduler.py
 
-A python script that runs various collectors on a timed basis.
+A python script that runs various collectors on a timed basis. For best performance, this should be run
+on a daily basis at 14:00 UTC. This guarantees that the APIs have collected all the data for the previous day,
+and avoids weirdness with daylight savings.
 """
 from deephaven.time import now, lower_bin, minus_nanos
 
@@ -32,12 +34,11 @@ ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=p
                            date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
 
 ga_tables = ga_collector.collect_data()
-
+for i in range(len(ga_tables)):
+    globals()[f"ga_table{i}"] = ga_tables[i]
 twitter_table = twitter_ads_main(start_date, end_date, date_increment)
-
 slack_table = get_channel_messages(SLACK_CHANNEL, start_time=start_date, end_time=end_date)
 
 write_tables(tables=ga_tables, path=f"/data/{start_date.toDateString()}/google/")
 write_tables(table=twitter_table, path=f"/data/{start_date.toDateString()}/twitter/")
 write_tables(table=slack_table, path=f"/data/{start_date.toDateString()}/slack/")
-
