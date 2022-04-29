@@ -19,7 +19,6 @@ import time
 import json
 
 SLACK_API_TOKEN = os.environ.get("SLACK_API_TOKEN")
-SLACK_CHANNEL = os.environ.get("SLACK_CHANNEL")
 
 slack_client = WebClient(token=SLACK_API_TOKEN)
 
