@@ -167,4 +167,4 @@ def get_all_slack_messages(start_time=None, end_time=None):
         channel_ids.append(channel_id)
         table_writer.write_row(channel_id, channel_name, channel_json)
 
-    return (table_writer.table, get_channel_messages(channel_ids, start_time=None, end_time=None))
+    return (table_writer.table, get_channel_messages(channel_ids, start_time=start_time, end_time=end_time))
