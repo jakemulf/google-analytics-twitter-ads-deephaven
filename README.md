@@ -114,7 +114,16 @@ start_date = to_datetime("2022-03-11T00:00:00 UTC")
 end_date = to_datetime("2022-03-14T00:00:00 UTC")
 date_increment = to_period("1D")
 
-twitter_table = twitter_ads_main(start_date, end_date, date_increment)
+analytics_types = [
+    ("CAMPAIGN", "Campaign", get_campaigns, analytics_out_of_range),
+    ("LINE_ITEM", "AdGroup", get_line_items, analytics_out_of_range),
+    ("FUNDING_INSTRUMENT", "FundingInstrument", get_funding_instruments, analytics_out_of_range),
+    ("PROMOTED_TWEET", "PromotedTweet", get_promoted_tweets, promoted_tweet_out_of_range),
+    ("MEDIA_CREATIVE", "MediaCreative", get_media_creatives, analytics_out_of_range)
+]
+twitter_collector = TwitterCollector(twitter_client, analytics_types)
+
+twitter_table = twitter_ads_main(twitter_collector, start_date, end_date, date_increment)
 ```
 
 This example collects data from Slack.
