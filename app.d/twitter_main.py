@@ -162,7 +162,8 @@ def twitter_ads_main(start_date, end_date, date_increment):
 
     #Get metrics on the account. These tuples represent the
     #analytics name for the Twitter API, the name of the row
-    #in the AnalyticsType column, and the list of entities to pull.
+    #in the AnalyticsType column, and the function that takes an account
+    #and returns a list of entities to pull.
 
     #To collect more data, add entries to this list
     analytics_types = [
