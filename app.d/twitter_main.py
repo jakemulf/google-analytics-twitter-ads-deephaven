@@ -25,7 +25,6 @@ TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
 
 twitter_client = Client(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
-twitter_accounts = twitter_client.accounts()
 
 def analytics_out_of_range(analytics, start_date, end_date):
     """
@@ -86,56 +85,57 @@ def get_analytics_metrics(account, analytics, start_date, end_date, placement, e
 
     return json.dumps(response)
 
-def get_campaigns():
+def get_campaigns(account):
     """
     Retrieves all the campaigns for the Twitter account
+
+    Parameters:
+        account (Account): The Twitter account to pull data from
 
     Returns:
         list<Campaign>: The list of all campaigns across all accounts 
     """
     campaigns = []
-    for account in twitter_accounts:
-        for campaign in account.campaigns():
-            campaigns.append(campaign)
-        time.sleep(4)
+    for campaign in account.campaigns():
+        campaigns.append(campaign)
+    time.sleep(4)
     return campaigns
 
-def get_line_items():
+def get_line_items(account):
     """
     Retrieves all the line items for the Twitter account
+
+    Parameters:
+        account (Account): The Twitter account to pull data from
 
     Returns:
         list<LineItem>: The list of all line items across all accounts 
     """
     line_items = []
-    for account in twitter_accounts:
-        for line_item in account.line_items():
-            line_items.append(line_item)
-        time.sleep(4)
+    for line_item in account.line_items():
+        line_items.append(line_item)
+    time.sleep(4)
     return line_items
 
-def get_funding_instruments():
+def get_funding_instruments(account):
     funding_instruments = []
-    for account in twitter_accounts:
-        for funding_instrument in account.funding_instruments():
-            funding_instruments.append(funding_instrument)
-        time.sleep(4)
+    for funding_instrument in account.funding_instruments():
+        funding_instruments.append(funding_instrument)
+    time.sleep(4)
     return funding_instruments
 
-def get_promoted_tweets():
+def get_promoted_tweets(account):
     promoted_tweets = []
-    for account in twitter_accounts:
-        for promoted_tweet in account.promoted_tweets():
-            promoted_tweets.append(promoted_tweet)
-        time.sleep(4)
+    for promoted_tweet in account.promoted_tweets():
+        promoted_tweets.append(promoted_tweet)
+    time.sleep(4)
     return promoted_tweets
 
-def get_media_creatives():
+def get_media_creatives(account):
     media_creatives = []
-    for account in twitter_accounts:
-        for media_creative in account.media_creatives():
-            media_creatives.append(media_creative)
-        time.sleep(4)
+    for media_creative in account.media_creatives():
+        media_creatives.append(media_creative)
+    time.sleep(4)
     return media_creatives
 
 def twitter_ads_main(start_date, end_date, date_increment):
@@ -153,7 +153,9 @@ def twitter_ads_main(start_date, end_date, date_increment):
     #Create table writer
     dtw_columns = {
         "Date": dht.DateTime,
+        "AccountName": dht.string,
         "AnalyticsType": dht.string,
+        "Placement": dht.string,
         "JsonString": dht.string,
     }
     table_writer = DynamicTableWriter(dtw_columns)
@@ -164,12 +166,12 @@ def twitter_ads_main(start_date, end_date, date_increment):
 
     #To collect more data, add entries to this list
     analytics_types = [
-        ("CAMPAIGN", "Campaign", get_campaigns()),
-        ("LINE_ITEM", "AdGroup", get_line_items()),
-        ("FUNDING_INSTRUMENT", "FundingInstrument", get_funding_instruments()),
-        #("PROMOTED_TWEET", "PromotedTweet", get_promoted_tweets()[0:1]), #Leaving this out for now
+        ("CAMPAIGN", "Campaign", get_campaigns),
+        ("LINE_ITEM", "AdGroup", get_line_items),
+        ("FUNDING_INSTRUMENT", "FundingInstrument", get_funding_instruments),
+        #("PROMOTED_TWEET", "PromotedTweet", get_promoted_tweets[0:1]), #Leaving this out for now
         #since the promoted tweets don't have a start/end time, but instead a created time
-        ("MEDIA_CREATIVE", "MediaCreative", get_media_creatives())
+        ("MEDIA_CREATIVE", "MediaCreative", get_media_creatives)
     ]
 
     #Loop through dates
@@ -178,13 +180,14 @@ def twitter_ads_main(start_date, end_date, date_increment):
         print("Twitter")
         print(current_date)
         next_date = plus_period(current_date, date_increment)
-        for account in twitter_accounts:
-            for (api_name, table_name, analytics_list) in analytics_types:
-                for analytics in analytics_list:
+
+        for account in twitter_client.accounts():
+            for (api_name, table_name, analytics_list_method) in analytics_types:
+                for analytics in analytics_list_method(account):
                     for placement in ["PUBLISHER_NETWORK", "ALL_ON_TWITTER"]:
                         json_str = get_analytics_metrics(account, analytics, current_date, next_date, placement, api_name)
                         if not (json_str is None):
-                            table_writer.write_row(current_date, table_name, json_str)
+                            table_writer.write_row(current_date, account.name, table_name, placement, json_str)
         current_date = next_date
 
     return table_writer.table

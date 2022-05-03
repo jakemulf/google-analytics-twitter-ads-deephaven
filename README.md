@@ -70,8 +70,12 @@ Once launched, go to the Deephaven UI (this defaults to: localhost:10000). You c
 
 This example shows how to use the Google Analytics data collector
 
+Notice: For best performance, `date_increment` should be in increments of days (`1D`, `2D`, etc) with a maximum of `7D`, and time zones should be UTC.
+
 ```
-from deephaven.time import to_datetime, to_period
+from deephaven.time import to_datetime, to_period, TimeZone
+
+TimeZone.set_default_timezone(TimeZone.UTC)
 
 metrics_collectors = [
     MetricsCollector(expression="ga:pageViews", metric_column_name="PageViews", dh_type=dht.int_, converter=int),
@@ -82,8 +86,8 @@ paths = [
     "/company/careers/posts/internship-2022/",
     "/core/docs/how-to-guides/parquet-partitioned/"
 ]
-start_date = to_datetime("2022-04-12T00:00:00 NY")
-end_date = to_datetime("2022-04-18T00:00:00 NY")
+start_date = to_datetime("2022-04-12T00:00:00 UTC")
+end_date = to_datetime("2022-04-18T00:00:00 UTC")
 page_size = 100000
 view_id = "181392643"
 date_increment = to_period("1D")
@@ -102,10 +106,12 @@ This example collects campaign data from the Twitter Ads API. The JSON body that
 Based on the Twitter Ads API package, the 24 hour time stamps start at 00:00:00 UTC for the given DateTime.
 
 ```
-from deephaven.time import to_datetime, to_period
+from deephaven.time import to_datetime, to_period, TimeZone
 
-start_date = to_datetime("2022-03-11T00:00:00 NY")
-end_date = to_datetime("2022-03-14T00:00:00 NY")
+TimeZone.set_default_timezone(TimeZone.UTC)
+
+start_date = to_datetime("2022-03-11T00:00:00 UTC")
+end_date = to_datetime("2022-03-14T00:00:00 UTC")
 date_increment = to_period("1D")
 
 twitter_table = twitter_ads_main(start_date, end_date, date_increment)
@@ -114,10 +120,12 @@ twitter_table = twitter_ads_main(start_date, end_date, date_increment)
 This example collects data from Slack.
 
 ```
-from deephaven.time import to_datetime
+from deephaven.time import to_datetime, TimeZone
 
-start_time = to_datetime("2022-03-11T00:00:00 NY")
-end_time = to_datetime("2022-03-14T00:00:00 NY")
+TimeZone.set_default_timezone(TimeZone.UTC)
+
+start_time = to_datetime("2022-03-11T00:00:00 UTC")
+end_time = to_datetime("2022-03-14T00:00:00 UTC")
 
 (slack_channels, slack_messages) = get_all_slack_messages(start_time=start_time, end_time=end_time)
 ```

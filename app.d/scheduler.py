@@ -5,14 +5,15 @@ A python script that runs various collectors on a timed basis. For best performa
 on a daily basis at 14:00 UTC. This guarantees that the APIs have collected all the data for the previous day,
 and avoids weirdness with daylight savings.
 """
-from deephaven.time import now, lower_bin, minus_nanos
+from deephaven.time import now, lower_bin, minus_nanos, TimeZone
 
 import os
 
 ONE_DAY_NANOS = 86400000000000
 HOURS_NANOS_8 = 28800000000000
-
 DAYS_OFFSET = int(os.environ.get("DAYS_OFFSET", 1))
+
+TimeZone.set_default_timezone(TimeZone.UTC)
 
 end_date = lower_bin(now(), ONE_DAY_NANOS, offset=HOURS_NANOS_8)
 start_date = minus_nanos(end_date, ONE_DAY_NANOS * DAYS_OFFSET)
