@@ -114,6 +114,30 @@ def get_line_items():
         time.sleep(4)
     return line_items
 
+def get_funding_instruments():
+    funding_instruments = []
+    for account in twitter_accounts:
+        for funding_instrument in account.funding_instruments():
+            funding_instruments.append(funding_instrument)
+        time.sleep(4)
+    return funding_instruments
+
+def get_promoted_tweets():
+    promoted_tweets = []
+    for account in twitter_accounts:
+        for promoted_tweet in account.promoted_tweets():
+            promoted_tweets.append(promoted_tweet)
+        time.sleep(4)
+    return promoted_tweets
+
+def get_media_creatives():
+    media_creatives = []
+    for account in twitter_accounts:
+        for media_creative in account.media_creatives():
+            media_creatives.append(media_creative)
+        time.sleep(4)
+    return media_creatives
+
 def twitter_ads_main(start_date, end_date, date_increment):
     """
     Main method for the twitter ads data collector. Collects data of various types
@@ -142,6 +166,10 @@ def twitter_ads_main(start_date, end_date, date_increment):
     analytics_types = [
         ("CAMPAIGN", "Campaign", get_campaigns()),
         ("LINE_ITEM", "AdGroup", get_line_items()),
+        ("FUNDING_INSTRUMENT", "FundingInstrument", get_funding_instruments()),
+        #("PROMOTED_TWEET", "PromotedTweet", get_promoted_tweets()[0:1]), #Leaving this out for now
+        #since the promoted tweets don't have a start/end time, but instead a created time
+        ("MEDIA_CREATIVE", "MediaCreative", get_media_creatives())
     ]
 
     #Loop through dates
