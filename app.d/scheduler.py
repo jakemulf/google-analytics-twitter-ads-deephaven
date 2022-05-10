@@ -49,13 +49,14 @@ analytics_types = [
 ]
 twitter_collector = TwitterCollector(twitter_client, analytics_types)
 
-twitter_table = twitter_ads_main(twitter_collector, start_date, end_date, date_increment)
+twitter_table = twitter_collector.twitter_analytics_data(start_date, end_date, date_increment)
+twitter_metadata = twitter_collector.twitter_analytics_metadata()
 
 ###Slack
 (slack_channels, slack_messages) = get_all_slack_messages(start_time=start_date, end_time=end_date)
 
 ###Write tables
 write_tables(tables=ga_tables, path=f"/data/{start_date.toDateString()}/google/")
-write_tables(table=twitter_table, path=f"/data/{start_date.toDateString()}/twitter/")
+write_tables(table=twitter_analytics_table, path=f"/data/{start_date.toDateString()}/twitter/")
 write_tables(table=slack_channels, path=f"/data/{start_date.toDateString()}/slack-channels/")
 write_tables(table=slack_messages, path=f"/data/{start_date.toDateString()}/slack-messages/")

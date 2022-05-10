@@ -54,6 +54,66 @@ class TwitterCollector:
                 for analytics in analytics_list_method(account):
                     self.analytics_items.append((api_name, table_name, account, analytics, out_of_range))
 
+    def twitter_analytics_data(self, start_date, end_date, date_increment):
+        """
+        Main method for the twitter ads data collector. Collects data of various types
+        and returns a Deephaven Table
+
+        Parameters:
+            start_date (DateTime): The start date as a Deephaven DateTime object.
+            end_Date (DateTime): The end date as a Deephaven DateTime object.
+            date_increment (Period): The time increment for subsequent data retrievals
+        Returns:
+            Table: The Deephaven table containing the data
+        """
+        #Create table writer
+        dtw_columns = {
+            "Date": dht.DateTime,
+            "AccountName": dht.string,
+            "AnalyticsType": dht.string,
+            "AnalyticsName": dht.string,
+            "Placement": dht.string,
+            "JsonString": dht.string,
+        }
+        table_writer = DynamicTableWriter(dtw_columns)
+
+        #Loop through dates
+        current_date = start_date
+        while current_date < end_date:
+            print("Twitter")
+            print(current_date)
+            next_date = plus_period(current_date, date_increment)
+
+            for (api_name, table_name, account, analytics, out_of_range) in self.analytics_items:
+                if not out_of_range(analytics, current_date, next_date):
+                    for placement in ["PUBLISHER_NETWORK", "ALL_ON_TWITTER"]:
+                        json_str = get_analytics_metrics(account, analytics, current_date, next_date, placement, api_name)
+                        name = None
+                        if hasattr(analytics, "name"):
+                            name = analytics.name
+                        table_writer.write_row(current_date, account.name, table_name, name, placement, json_str)
+
+            current_date = next_date
+
+        return table_writer.table
+
+    def twitter_analytics_metadata(self):
+        """
+        Returns a Deephaven table containing metadata from the analytics items found in the account
+
+        Returns:
+            Table: The Deephaven table
+        """
+        dtw_columns = {
+            "JsonString": dht.string,
+        }
+        table_writer = DynamicTableWriter(dtw_columns)
+
+        for (_, _, _, analytics, _) in self.analytics_items:
+            table_writer.write_row(json.dumps(vars(analytics))) #oops: can't serialize the nested classes
+
+        return table_writer.table
+
 def promoted_tweet_out_of_range(promoted_tweet, start_date, end_date):
     """
     Determines if the promoted tweet exists within the given date range.
@@ -205,47 +265,3 @@ def get_media_creatives(account):
         media_creatives.append(media_creative)
     time.sleep(4)
     return media_creatives
-
-def twitter_ads_main(twitter_collector, start_date, end_date, date_increment):
-    """
-    Main method for the twitter ads data collector. Collects data of various types
-    and returns a Deephaven Table
-
-    Parameters:
-        twitter_collector (TwitterCollector): The class definition for the twitter collector.
-        start_date (DateTime): The start date as a Deephaven DateTime object.
-        end_Date (DateTime): The end date as a Deephaven DateTime object.
-        date_increment (Period): The time increment for subsequent data retrievals
-    Returns:
-        Table: The Deephaven table containing the data
-    """
-    #Create table writer
-    dtw_columns = {
-        "Date": dht.DateTime,
-        "AccountName": dht.string,
-        "AnalyticsType": dht.string,
-        "AnalyticsName": dht.string,
-        "Placement": dht.string,
-        "JsonString": dht.string,
-    }
-    table_writer = DynamicTableWriter(dtw_columns)
-
-    #Loop through dates
-    current_date = start_date
-    while current_date < end_date:
-        print("Twitter")
-        print(current_date)
-        next_date = plus_period(current_date, date_increment)
-
-        for (api_name, table_name, account, analytics, out_of_range) in twitter_collector.analytics_items:
-            if not out_of_range(analytics, current_date, next_date):
-                for placement in ["PUBLISHER_NETWORK", "ALL_ON_TWITTER"]:
-                    json_str = get_analytics_metrics(account, analytics, current_date, next_date, placement, api_name)
-                    name = None
-                    if hasattr(analytics, "name"):
-                        name = analytics.name
-                    table_writer.write_row(current_date, account.name, table_name, name, placement, json_str)
-
-        current_date = next_date
-
-    return table_writer.table

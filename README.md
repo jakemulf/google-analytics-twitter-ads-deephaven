@@ -123,7 +123,8 @@ analytics_types = [
 ]
 twitter_collector = TwitterCollector(twitter_client, analytics_types)
 
-twitter_table = twitter_ads_main(twitter_collector, start_date, end_date, date_increment)
+twitter_table = twitter_collector.twitter_analytics_data(start_date, end_date, date_increment)
+twitter_metadata = twitter_collector.twitter_analytics_metadata()
 ```
 
 This example collects data from Slack.
