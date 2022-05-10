@@ -29,4 +29,4 @@ jobs:
         with:
           table-names: ga_table0,twitter_table,twitter_metadata,slack_channels,slack_messages
           host: localhost
-          max-retries: 8
+          max-retries: 50
