@@ -5,18 +5,20 @@ A python script that runs various collectors on a timed basis. For best performa
 on a daily basis at 14:00 UTC. This guarantees that the APIs have collected all the data for the previous day,
 and avoids weirdness with daylight savings.
 """
-from deephaven.time import now, lower_bin, minus_nanos
+from deephaven.time import now, lower_bin, minus_nanos, TimeZone
 
 import os
 
 ONE_DAY_NANOS = 86400000000000
 HOURS_NANOS_8 = 28800000000000
-
 DAYS_OFFSET = int(os.environ.get("DAYS_OFFSET", 1))
+
+TimeZone.set_default_timezone(TimeZone.UTC)
 
 end_date = lower_bin(now(), ONE_DAY_NANOS, offset=HOURS_NANOS_8)
 start_date = minus_nanos(end_date, ONE_DAY_NANOS * DAYS_OFFSET)
 
+###Google
 metrics_collectors = [
     MetricsCollector(expression="ga:pageViews", metric_column_name="PageViews", dh_type=dht.int_, converter=int),
     MetricsCollector(expression="ga:uniquePageViews", metric_column_name="UniqueViews", dh_type=dht.double, converter=float),
@@ -36,9 +38,23 @@ ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=p
 ga_tables = ga_collector.collect_data()
 for i in range(len(ga_tables)):
     globals()[f"ga_table{i}"] = ga_tables[i]
-twitter_table = twitter_ads_main(start_date, end_date, date_increment)
+
+###Twitter
+analytics_types = [
+    ("CAMPAIGN", "Campaign", get_campaigns, analytics_out_of_range),
+    ("LINE_ITEM", "AdGroup", get_line_items, analytics_out_of_range),
+    ("FUNDING_INSTRUMENT", "FundingInstrument", get_funding_instruments, analytics_out_of_range),
+    ("PROMOTED_TWEET", "PromotedTweet", get_promoted_tweets, promoted_tweet_out_of_range),
+    ("MEDIA_CREATIVE", "MediaCreative", get_media_creatives, analytics_out_of_range)
+]
+twitter_collector = TwitterCollector(twitter_client, analytics_types)
+
+twitter_table = twitter_ads_main(twitter_collector, start_date, end_date, date_increment)
+
+###Slack
 (slack_channels, slack_messages) = get_all_slack_messages(start_time=start_date, end_time=end_date)
 
+###Write tables
 write_tables(tables=ga_tables, path=f"/data/{start_date.toDateString()}/google/")
 write_tables(table=twitter_table, path=f"/data/{start_date.toDateString()}/twitter/")
 write_tables(table=slack_channels, path=f"/data/{start_date.toDateString()}/slack-channels/")
