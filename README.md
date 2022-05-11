@@ -83,8 +83,7 @@ metrics_collectors = [
     MetricsCollector(expression="ga:bounceRate", metric_column_name="BounceRate", dh_type=dht.double, converter=float)
 ]
 paths = [
-    "/company/careers/posts/internship-2022/",
-    "/core/docs/how-to-guides/parquet-partitioned/"
+    "/",
 ]
 start_date = to_datetime("2022-04-12T00:00:00 UTC")
 end_date = to_datetime("2022-04-18T00:00:00 UTC")
@@ -155,6 +154,8 @@ The `./app.d/scheduler.py` file contains a script that can be run on a scheduled
 
 The scheduler simply pulls from all of the data sources (Google, Twitter, etc.) and writes them to Parquet files. The files are written to the `/data/<start_date>/` directory.
 
+The environmental variable `SCHEDULED` needs to be set to `true` for the scheduler to run.
+
 ## Github Actions configuration
 
 This project has a simple action for PR checks that launches the project and runs the scheduler with a 0 day offset (meaning no data will be collected).
@@ -168,6 +169,7 @@ TWITTER_CONSUMER_SECRET
 TWITTER_ACCESS_TOKEN
 TWITTER_ACCESS_TOKEN_SECRET
 SLACK_API_TOKEN
+SCHEDULED
 ```
 
-`GOOGLE_KEY` should be the file contents of the `./secrets/google-key.json` file, and the rest of them should be the same values used to run the project.
+`GOOGLE_KEY` should be the file contents of the `./secrets/google-key.json` file, `SCHEDULED` should be set to `true`, and the rest of them should be the same values used to run the project.
