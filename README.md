@@ -77,6 +77,10 @@ from deephaven.time import to_datetime, to_period, TimeZone
 
 TimeZone.set_default_timezone(TimeZone.UTC)
 
+dimension_collectors = [
+    DimensionCollector(expression="ga:pagePath", metric_column_name="PagePath"),
+    DimensionCollector(expression="ga:sourceMedium", metric_column_name="SourceMedium")
+]
 metrics_collectors = [
     MetricsCollector(expression="ga:pageViews", metric_column_name="PageViews", dh_type=dht.int_, converter=int),
     MetricsCollector(expression="ga:uniquePageViews", metric_column_name="UniqueViews", dh_type=dht.double, converter=float),
@@ -92,7 +96,8 @@ view_id = "181392643"
 date_increment = to_period("1D")
 
 ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=page_size, view_id=view_id,
-                           date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
+                           date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors,
+                           dimension_collectors=dimension_collectors)
 
 ga_tables = ga_collector.collect_data()
 
