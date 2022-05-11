@@ -39,7 +39,9 @@ else:
     ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=page_size, view_id=view_id,
                                date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
 
-    ga_table = ga_collector.collect_data()
+    ga_tables = ga_collector.collect_data()
+    for i in range(len(ga_tables)):
+        globals()[f"ga_table{i}"] = ga_tables[i]
 
     ###Twitter
     analytics_types = [
@@ -58,7 +60,7 @@ else:
     (slack_channels, slack_messages) = get_all_slack_messages(start_time=start_date, end_time=end_date)
 
     ###Write tables
-    write_tables(table=ga_table, path=f"/data/{start_date.toDateString()}/google/")
+    write_tables(tables=ga_tables, path=f"/data/{start_date.toDateString()}/google/")
     write_tables(table=twitter_analytics_table, path=f"/data/{start_date.toDateString()}/twitter/")
     write_tables(table=twitter_metadata, path=f"/data/{start_date.toDateString()}/twitter-metadata/")
     write_tables(table=slack_channels, path=f"/data/{start_date.toDateString()}/slack-channels/")
