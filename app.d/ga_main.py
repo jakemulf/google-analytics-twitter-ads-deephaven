@@ -36,8 +36,11 @@ class GaCollector:
         analytics: An authorized Analytics Reporting API V4 service object.
         ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
             Otherwise, query strings are normalized to a constant value.
+        dimension_collectors (list<DimensionCollector>): A list of DimensionCollector instances used for expression evaluation
     """
-    def __init__(self, start_date=None, end_date=None, date_increment=None, page_size=None, view_id=None, paths=None, metrics_collectors=None, ignore_query_strings=True):
+    def __init__(self, start_date=None, end_date=None, date_increment=None, page_size=None,
+                 view_id=None, paths=None, metrics_collectors=None, ignore_query_strings=True,
+                 dimension_collectors=None):
         self.start_date = start_date
         self.end_date = end_date
         self.date_increment = date_increment
@@ -46,6 +49,7 @@ class GaCollector:
         self.paths = paths
         self.metrics_collectors = metrics_collectors
         self.ignore_query_strings = ignore_query_strings
+        self.dimension_collectors = dimension_collectors
 
         #Create analytics class
         self.analytics = initialize_analyticsreporting()
@@ -65,19 +69,15 @@ class GaCollector:
       metrics = []
       for metrics_collector in self.metrics_collectors:
           metrics.append({'expression': metrics_collector.expression})
+      dimensions = []
+      for dimension_collector in self.dimension_collectors:
+          dimensions.append({'name': dimension_collector.expression})
       body = {
         'reportRequests': [
           {
             'viewId': self.view_id,
             'pageSize': self.page_size,
-            'dimensions': [
-              {
-                'name': 'ga:pagePath',
-              },
-              {
-                'name': 'ga:sourceMedium',
-              }
-            ],
+            'dimensions': dimensions,
             'dateRanges': [
               {
                 'startDate': start_date,
@@ -195,6 +195,18 @@ class MetricsCollector:
         self.metric_column_name = metric_column_name
         self.dh_type = dh_type
         self.converter = converter
+
+class DimensionCollector:
+    """
+    A class to represent a definition of collecting specific dimensions from Google Analytics
+
+    Attributes:
+        expression (str): The Google Analytics expression to collect
+        metric_column_name (str): The column name in the Deephaven table for the collected metric
+    """
+    def __init__(self, expression=None, metric_column_name=None):
+        self.expression = expression
+        self.metric_column_name = metric_column_name
 
 def path_format(strn, ignore_query_strings):
     """

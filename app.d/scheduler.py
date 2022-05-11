@@ -23,6 +23,10 @@ else:
     start_date = minus_nanos(end_date, ONE_DAY_NANOS * DAYS_OFFSET)
 
     ###Google
+    dimension_collectors = [
+        DimensionCollector(expression="ga:pagePath", metric_column_name="PagePath"),
+        DimensionCollector(expression="ga:sourceMedium", metric_column_name="SourceMedium")
+    ]
     metrics_collectors = [
         MetricsCollector(expression="ga:pageViews", metric_column_name="PageViews", dh_type=dht.int_, converter=int),
         MetricsCollector(expression="ga:uniquePageViews", metric_column_name="UniqueViews", dh_type=dht.double, converter=float),
@@ -37,7 +41,8 @@ else:
     date_increment = to_period("1D")
 
     ga_collector = GaCollector(start_date=start_date, end_date=end_date, page_size=page_size, view_id=view_id,
-                               date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors)
+                               date_increment=date_increment, paths=paths, metrics_collectors=metrics_collectors,
+                               dimension_collectors=dimension_collectors)
 
     ga_tables = ga_collector.collect_data()
     for i in range(len(ga_tables)):
