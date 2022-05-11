@@ -112,7 +112,7 @@ class GaCollector:
         Parameters:
             path (str): The path to collect data on
         Returns:
-            Table: The Deephaven table containing the day-by-day data
+            tuple(Table, Table): A Deephaven table containing the day-by-day data, and a Deephaven table of the JSON responses
         """
         #Create the table writer
         metrics_collector_columns = {}
@@ -124,8 +124,13 @@ class GaCollector:
             "Source": dht.string,
         }
         dtw_columns.update(metrics_collector_columns)
-        dtw_columns.update({"JsonString": dht.string})
         table_writer = DynamicTableWriter(dtw_columns)
+
+        dtw_columns_json = {
+            "Date": dht.DateTime,
+            "JsonString": dht.string
+        }
+        table_writer_json = DynamicTableWriter(dtw_columns_json)
 
         #Loop through the date range
         current_date = self.start_date
@@ -149,7 +154,8 @@ class GaCollector:
                 next_page_token = response["reports"][0].get("nextPageToken")
 
                 for row_to_write in parsed_counts:
-                    table_writer.write_row([current_date] + row_to_write + [json.dumps(response)])
+                    table_writer.write_row([current_date] + row_to_write)
+                table_writer_json.write_row(current_date, json.dumps(response))
 
                 #If no pagination, break
                 if next_page_token is None:
@@ -157,7 +163,7 @@ class GaCollector:
 
             current_date = plus_period(current_date, self.date_increment)
 
-        return table_writer.table
+        return (table_writer.table, table_writer_json.table)
 
     def collect_data(self):
         """
@@ -169,8 +175,9 @@ class GaCollector:
         """
         tables = []
         for path in self.paths:
-            result = self._google_analytics_table_writer(path)
-            tables.append(result)
+            (result_table, json_table) = self._google_analytics_table_writer(path)
+            tables.append(result_table)
+            tables.append(json_table)
         return tables
 
 class MetricsCollector:
