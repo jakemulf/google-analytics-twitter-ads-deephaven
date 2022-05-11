@@ -50,19 +50,21 @@ class GaCollector:
         #Create analytics class
         self.analytics = initialize_analyticsreporting()
     
-    def _get_google_analytics_report(self, path, metrics_collector, start_date, end_date, page_token=None):
+    def _get_google_analytics_report(self, path, start_date, end_date, page_token=None):
       """Queries the Analytics Reporting API V4.
 
       Modified function taken from https://developers.google.com/analytics/devguides/reporting/core/v4/quickstart/service-py
 
       Parameters:
         path (str): The path to evaluate the expression on.
-        metrics_collector (MetricsCollector): The MetricsCollector instance that defines how to collect the data.
         ga_collector (GaCollector): The GaCollector instance that defines what to pull
         page_token (str): The page token if making a subsequent request.
       Returns:
         dict: The Analytics Reporting API V4 response.
       """
+      metrics = []
+      for metrics_collector in self.metrics_collectors:
+          metrics.append({'expression': metrics_collector.expression})
       body = {
         'reportRequests': [
           {
@@ -71,6 +73,9 @@ class GaCollector:
             'dimensions': [
               {
                 'name': 'ga:pagePath',
+              },
+              {
+                'name': 'ga:sourceMedium',
               }
             ],
             'dateRanges': [
@@ -79,11 +84,7 @@ class GaCollector:
                 'endDate': end_date
               }
             ],
-            'metrics': [
-              {
-                'expression': metrics_collector.expression
-              }
-            ],
+            'metrics': metrics,
             'dimensionFilterClauses': [
               {
                 'filters': [
@@ -103,24 +104,27 @@ class GaCollector:
 
       return self.analytics.reports().batchGet(body=body).execute()
 
-    def _google_analytics_table_writer(self, path, metrics_collector):
+    def _google_analytics_table_writer(self, path):
         """
         Table writer for the google analytics collector. This pulls day-by-day information from
         the google analytics API for the given path, and returns a Deephaven table of this information
 
         Parameters:
             path (str): The path to collect data on
-            metrics_collector (MetricsCollector): The metrics to collect
         Returns:
             Table: The Deephaven table containing the day-by-day data
         """
         #Create the table writer
+        metrics_collector_columns = {}
+        for metrics_collector in self.metrics_collectors:
+            metrics_collector_columns[metrics_collector.metric_column_name] = metrics_collector.dh_type
         dtw_columns = {
             "Date": dht.DateTime,
             "URL": dht.string,
-            metrics_collector.metric_column_name: metrics_collector.dh_type,
-            "JsonString": dht.string,
+            "Source": dht.string,
         }
+        dtw_columns.update(metrics_collector_columns)
+        dtw_columns.update({"JsonString": dht.string})
         table_writer = DynamicTableWriter(dtw_columns)
 
         #Loop through the date range
@@ -138,14 +142,14 @@ class GaCollector:
             next_page_token = None
 
             while True:
-                response = self._get_google_analytics_report(path, metrics_collector, current_date_string,
+                response = self._get_google_analytics_report(path, current_date_string,
                                                              next_date_string, page_token=next_page_token)
                 time.sleep(1) #Sleep to avoid rate limits for subsequent calls
-                parsed_counts = parse_ga_response(response, metrics_collector.converter, self.ignore_query_strings)
+                parsed_counts = parse_ga_response(response, self.metrics_collectors, self.ignore_query_strings)
                 next_page_token = response["reports"][0].get("nextPageToken")
 
-                for (url, value) in parsed_counts:
-                    table_writer.write_row(current_date, url, value, json.dumps(response))
+                for row_to_write in parsed_counts:
+                    table_writer.write_row([current_date] + row_to_write + [json.dumps(response)])
 
                 #If no pagination, break
                 if next_page_token is None:
@@ -165,9 +169,8 @@ class GaCollector:
         """
         tables = []
         for path in self.paths:
-            for metrics_collector in self.metrics_collectors:
-                result = self._google_analytics_table_writer(path, metrics_collector)
-                tables.append(self._google_analytics_table_writer(path, metrics_collector))
+            result = self._google_analytics_table_writer(path)
+            tables.append(result)
         return tables
 
 class MetricsCollector:
@@ -208,26 +211,33 @@ def path_format(strn, ignore_query_strings):
         result = strn
     return result
 
-def parse_ga_response(d, converter, ignore_query_strings):
+def parse_ga_response(d, metrics_collectors, ignore_query_strings):
     """
     Custom parser for the GA API response
 
     Parameters:
         d (dict): The dictionary response from the Google Analytics API
-        converter (method): A method to convert the data from the GA API to a Python value
+        metrics_collectors (list<MetricsCollector>): A list of metrics collectors that contain the converter methods
         ignore_query_strings (bool): If set to True, query strings are stripped away and ignored.
             Otherwise, query strings are normalized to a constant value.
     Returns:
-        list(tuple(str, T)): A list of url:value pairings
+        list<list>: A list of lists showing each row to write
     """
     values = []
     for report in d["reports"]:
         if "data" in report.keys():
             if "rows" in report["data"].keys():
                 for rows in report["data"]["rows"]:
+                    metrics_values = []
                     url = path_format(rows["dimensions"][0], ignore_query_strings)
-                    value = converter(rows["metrics"][0]["values"][0])
-                    values.append((url, value))
+                    source = rows["dimensions"][1]
+                    metrics_values.append(url)
+                    metrics_values.append(source)
+                    for i in range(len(rows["metrics"][0]["values"])):
+                        raw_value = rows["metrics"][0]["values"][i]
+                        converter = metrics_collectors[i].converter
+                        metrics_values.append(converter(raw_value))
+                    values.append(metrics_values)
     return values
 
 def initialize_analyticsreporting():

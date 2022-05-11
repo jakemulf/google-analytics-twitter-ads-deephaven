@@ -16,6 +16,7 @@ services:
       - TWITTER_ACCESS_TOKEN_SECRET=${TWITTER_ACCESS_TOKEN_SECRET}
       - SLACK_API_TOKEN=${SLACK_API_TOKEN}
       - DAYS_OFFSET=${DAYS_OFFSET}
+      - SCHEDULED=${SCHEDULED}
 
   web:
     image: ghcr.io/deephaven/web:${VERSION:-latest}
