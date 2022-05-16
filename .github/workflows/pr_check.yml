@@ -11,12 +11,15 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
       - run: |
           mkdir secrets
           echo "$GOOGLE_KEY" > secrets/google-key.json
         env:
           GOOGLE_KEY: ${{ secrets.GOOGLE_KEY }}
-      - run: sh start.sh -d
+      - run: . ./cron.sh
         env:
           DAYS_OFFSET: 0 #This will do a dummy run that builds the tables without any data
           SLACK_API_TOKEN: ${{ secrets.SLACK_API_TOKEN }}
